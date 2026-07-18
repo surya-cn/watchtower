@@ -1,7 +1,13 @@
+import { Suspense } from "react";
+import DashboardView from "../components/DashboardView";
+
+
 export default function Home() {
   return (
     <main>
-      <div>Hello world!</div>
+      <Suspense fallback={<div style={{ padding: '1rem' }}>Loading dashboard...</div>}>
+        <DashboardView />
+      </Suspense>
     </main>
   );
 }

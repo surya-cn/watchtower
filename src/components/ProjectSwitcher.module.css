@@ -1,0 +1,29 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--panel-bg);
+  border-bottom: 1px solid var(--border-color);
+  height: 60px;
+}
+
+.label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  min-width: 200px;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--accent);
+}

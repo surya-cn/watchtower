@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────────
+
+enum Source {
+  reddit
+  twitter
+  ea_forum
+  steam
+  discord
+}
+
+enum Severity {
+  low
+  medium
+  high
+}
+
+enum Status {
+  new
+  active
+  escalated
+  fixed
+  closed_false_positive
+  resolved
+}
+
+enum Role {
+  viewer
+  editor
+  admin
+}
+
+enum GlobalRole {
+  admin
+  member
+}
+
+// ── Models ─────────────────────────────────────────────────────────────────────
+// Field names use snake_case directly (matching DB columns) so that Prisma
+// query objects use the same keys the multi-tenancy middleware checks for.
+
+model Project {
+  id           String   @id
+  display_name String
+  config       Json
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  raw_posts      RawPost[]
+  issue_clusters IssueCluster[]
+  status_history StatusHistory[]
+  project_access ProjectAccess[]
+
+  @@map("projects")
+}
+
+model RawPost {
+  id             String   @id @default(uuid())
+  project_id     String
+  source         Source
+  source_post_id String
+  author         String?
+  content        String
+  url            String
+  posted_at      DateTime
+  ingested_at    DateTime @default(now())
+  cluster_id     String?
+
+  project Project       @relation(fields: [project_id], references: [id])
+  cluster IssueCluster? @relation(fields: [cluster_id], references: [id])
+
+  @@unique([project_id, source, source_post_id])
+  @@index([project_id])
+  @@map("raw_posts")
+}
+
+model IssueCluster {
+  id                String   @id @default(uuid())
+  project_id        String
+  title             String
+  summary           String?
+  category          String
+  severity          Severity @default(low)
+  status            Status   @default(new)
+  post_count        Int      @default(0)
+  priority_score    Float?
+  recurrence_ratio  Float?
+  first_reported_at DateTime
+  last_reported_at  DateTime
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  project        Project         @relation(fields: [project_id], references: [id])
+  raw_posts      RawPost[]
+  status_history StatusHistory[]
+
+  @@index([project_id])
+  @@map("issue_clusters")
+}
+
+model StatusHistory {
+  id         String   @id @default(uuid())
+  project_id String
+  cluster_id String
+  status     Status
+  note       String?
+  changed_at DateTime @default(now())
+  changed_by String?
+
+  project Project      @relation(fields: [project_id], references: [id])
+  cluster IssueCluster @relation(fields: [cluster_id], references: [id])
+
+  @@index([project_id])
+  @@index([cluster_id])
+  @@map("status_history")
+}
+
+model User {
+  id          String     @id @default(uuid())
+  email       String     @unique
+  name        String
+  created_at  DateTime   @default(now())
+  global_role GlobalRole @default(member)
+
+  project_access ProjectAccess[]
+
+  @@map("users")
+}
+
+model ProjectAccess {
+  id         String @id @default(uuid())
+  user_id    String
+  project_id String
+  role       Role   @default(viewer)
+
+  user    User    @relation(fields: [user_id], references: [id])
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@unique([user_id, project_id])
+  @@map("project_access")
+}

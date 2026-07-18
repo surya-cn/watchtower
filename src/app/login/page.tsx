@@ -51,7 +51,7 @@ export default function LoginPage() {
             Note: This is a placeholder auth system for testing. Must be replaced with real per-user authentication (e.g. company SSO) before production use.
           </p>
         </div>
-        <form className={styles.form} onSubmit={handleSubmit}>
+        <form className={styles.form} onSubmit={handleSubmit} action="#">
           <div className={styles.inputGroup}>
             <label htmlFor="username" style={{ display: 'none' }}>
               Username

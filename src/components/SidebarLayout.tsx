@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import React, { Suspense } from "react";
 import Sidebar from "./Sidebar";
 import TextType from "@/components/TextType/TextType";
 import styles from "./SidebarLayout.module.css";
@@ -14,7 +15,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   
   return (
     <div className={styles.container}>
-       <Sidebar />
+       <Suspense fallback={null}>
+         <Sidebar />
+       </Suspense>
        <main className={styles.mainContent}>
          <header className={styles.header}>
            <img src="/lighthouse.png" alt="Logo" className={styles.headerLogo} />

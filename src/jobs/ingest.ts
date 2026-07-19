@@ -88,7 +88,19 @@ export async function runIngest(targetProjectId: string | null = null): Promise<
             const urlLower = sourceConfig.url.toLowerCase();
             if (urlLower.includes("steamcommunity.com") && urlLower.includes("/discussions")) {
               const { fetchSteamDiscussions } = await import("./connectors/steam_discussions");
-              fetchedPosts = await fetchSteamDiscussions(sourceConfig.url, since);
+              
+              let fetchUrl = sourceConfig.url;
+              // If it's a generic discussion URL without a search query, rewrite it to use Steam's search
+              if (!urlLower.includes("search/?q=")) {
+                const searchKeywords = config.keywords.include.slice(0, 3).map(k => encodeURIComponent(k.toLowerCase()));
+                if (searchKeywords.length > 0) {
+                  const query = searchKeywords.join('+OR+');
+                  // Remove trailing slash if exists, then append /search/?q=
+                  fetchUrl = fetchUrl.replace(/\/$/, '') + `/search/?q=${query}`;
+                }
+              }
+
+              fetchedPosts = await fetchSteamDiscussions(fetchUrl, since);
             } else {
               // Not a steam URL, and JSON/RSS failed.
               throw fetchErr;

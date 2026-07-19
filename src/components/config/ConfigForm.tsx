@@ -285,8 +285,12 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
       });
 
       if (res.ok) {
-        setSuccess(isEditMode ? "Configuration saved." : "Project created.");
-        router.push(`/?project=${id}`);
+        setSuccess(isEditMode ? "Configuration saved. Syncing..." : "Project created. Syncing...");
+        
+        // Auto-sync after saving
+        await handleSync(finalId);
+
+        router.push(`/?project=${finalId}`);
         router.refresh();
       } else {
         const data = await res.json();
@@ -337,15 +341,15 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
     }
   };
 
-  const handleSync = async () => {
-    if (!id || !isEditMode) return;
+  const handleSync = async (projectIdToSync: string = id) => {
+    if (!projectIdToSync) return;
     setIsSyncing(true);
     setSyncStatus("Syncing...");
     setErrors({});
     setSuccess("");
 
     try {
-      const res = await fetch(`/api/projects/${id}/sync`, { method: "POST" });
+      const res = await fetch(`/api/projects/${projectIdToSync}/sync`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setSuccess(`Sync complete: ${data.ingest.postsInserted} new posts ingested, ${data.cluster.newClusters} new clusters created.`);
@@ -563,7 +567,7 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
               intensity={0.9}
               followMouse
               proximity={150}
-              onClick={handleSync}
+              onClick={() => handleSync(id)}
             >
               {isSyncing ? "Syncing..." : "Sync Now"}
             </SpecularButton>
@@ -582,7 +586,7 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
           followMouse
           proximity={180}
         >
-          {loading ? "Saving..." : "Save Configuration"}
+          {loading ? "Saving & Syncing..." : "Save Configuration"}
         </SpecularButton>
       </div>
 

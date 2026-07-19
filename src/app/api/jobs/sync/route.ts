@@ -4,7 +4,7 @@ import { runClustering } from "@/jobs/cluster";
 
 export const maxDuration = 300; // 5 minutes, requires Fluid Compute on Hobby plan
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get("authorization");
     

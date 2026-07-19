@@ -6,6 +6,7 @@ import LifecycleChart from "./LifecycleChart";
 import { apiClient } from "../lib/apiClient";
 import tableStyles from "./IssuesTable.module.css";
 import SpecularButton from "./SpecularButton/SpecularButton";
+import { createPortal } from "react-dom";
 
 interface RawPost {
   id: string;
@@ -47,6 +48,7 @@ export default function IssueDetailSlideOver({ issueId, projectId, onClose, onUp
   const [issue, setIssue] = useState<IssueDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const [newStatus, setNewStatus] = useState<string>("");
   const [statusNote, setStatusNote] = useState<string>("");
@@ -68,6 +70,7 @@ export default function IssueDetailSlideOver({ issueId, projectId, onClose, onUp
   }, [issueId, projectId]);
 
   useEffect(() => {
+    setMounted(true);
     fetchDetail();
     
     const handleEsc = (e: KeyboardEvent) => {
@@ -118,7 +121,9 @@ export default function IssueDetailSlideOver({ issueId, projectId, onClose, onUp
     );
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className={styles.overlay} onClick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}>
@@ -260,6 +265,7 @@ export default function IssueDetailSlideOver({ issueId, projectId, onClose, onUp
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

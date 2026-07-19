@@ -23,6 +23,7 @@ export async function fetchSteamDiscussions(
   since: Date | null
 ): Promise<RawPostInput[]> {
   let allPosts: RawPostInput[] = [];
+  const sinceTime = since ? since.getTime() : 0;
   
   // Scrape up to 5 pages to catch history on fast-moving boards like CS2
   const MAX_PAGES = 5;

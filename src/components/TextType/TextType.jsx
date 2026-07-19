@@ -19,8 +19,8 @@ const TextType = ({
   cursorClassName = '',
   cursorBlinkDuration = 0.5,
   textColors = [],
-  variableSpeed,
-  onSentenceComplete,
+  variableSpeed = null,
+  onSentenceComplete = (text, index) => {},
   startOnVisible = false,
   reverseMode = false,
   ...props

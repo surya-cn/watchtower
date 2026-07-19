@@ -5,7 +5,7 @@ import './OptionWheel.css';
 const OptionWheel = ({
   items = [],
   defaultSelected = 0,
-  onChange,
+  onChange = (index, item) => {},
   textColor = '#a6a6a6',
   activeColor = '#ffffff',
   side = 'left',

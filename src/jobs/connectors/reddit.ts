@@ -81,7 +81,7 @@ async function fetchWithRateLimit(url: string, token: string): Promise<any> {
 export const redditConnector: SourceConnector = {
   name: "reddit",
   async fetchPosts(
-    config: ProjectConfig["sources"]["reddit"],
+    config: any,
     since: Date | null
   ): Promise<RawPostInput[]> {
     if (!config || !config.subreddits || config.subreddits.length === 0) {

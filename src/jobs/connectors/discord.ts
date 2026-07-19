@@ -5,7 +5,7 @@ import { ProjectConfig } from "@/lib/schemas";
 export const discordConnector: SourceConnector = {
   name: "discord",
   async fetchPosts(
-    config: ProjectConfig["sources"]["discord"],
+    config: any,
     since: Date | null
   ): Promise<RawPostInput[]> {
     throw new Error("Discord connector is not yet implemented.");

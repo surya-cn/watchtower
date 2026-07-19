@@ -82,7 +82,7 @@ const SpecularButton = ({
   proximity = 200,
   autoAnimate = false,
   disabled = false,
-  onClick,
+  onClick = undefined,
   className = '',
   type = 'button',
   style = {},

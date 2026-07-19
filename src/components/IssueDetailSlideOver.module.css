@@ -8,6 +8,8 @@
   display: flex;
   justify-content: flex-end;
   z-index: 1000;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .panel {

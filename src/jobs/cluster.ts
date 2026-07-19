@@ -14,9 +14,8 @@ export interface ClusterResult {
 
 const BATCH_SIZE = 20;
 
-export async function runClustering(targetProjectId: string | null = null): Promise<ClusterResult> {
+export async function runClustering(targetProjectId: string | null = null, maxDurationMs: number = 45000): Promise<ClusterResult> {
   const startTime = Date.now();
-  const MAX_DURATION_MS = 45000;
   let stoppedEarly = false;
   const projects = await prisma.project.findMany({
     where: targetProjectId ? { id: targetProjectId } : undefined,
@@ -33,8 +32,8 @@ export async function runClustering(targetProjectId: string | null = null): Prom
   let totalSkipped = 0;
 
   for (const project of projects) {
-    if (Date.now() - startTime > MAX_DURATION_MS) {
-      console.log(`[Cluster] Stopping early - reached time limit of ${MAX_DURATION_MS}ms. More work remains for next run.`);
+    if (Date.now() - startTime > maxDurationMs) {
+      console.log(`[Cluster] Stopping early - reached time limit of ${maxDurationMs}ms. More work remains for next run.`);
       stoppedEarly = true;
       break;
     }
@@ -53,8 +52,8 @@ export async function runClustering(targetProjectId: string | null = null): Prom
     const failedPostIds = new Set<string>();
 
     while (true) {
-      if (Date.now() - startTime > MAX_DURATION_MS) {
-        console.log(`[Cluster] Stopping early - reached time limit of ${MAX_DURATION_MS}ms. More work remains for next run.`);
+      if (Date.now() - startTime > maxDurationMs) {
+        console.log(`[Cluster] Stopping early - reached time limit of ${maxDurationMs}ms. More work remains for next run.`);
         stoppedEarly = true;
         break;
       }

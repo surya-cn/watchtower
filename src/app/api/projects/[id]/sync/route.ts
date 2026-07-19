@@ -13,8 +13,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     console.log(`[Sync API] Starting manual sync for project: ${projectId}`);
     
-    const ingestSummary = await runIngest(projectId);
-    const clusterSummary = await runClustering(projectId);
+    const ingestSummary = await runIngest(projectId, 60000);
+    const clusterSummary = await runClustering(projectId, 210000);
     
     console.log(`[Sync API] Manual sync complete for project: ${projectId}`);
 

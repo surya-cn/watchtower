@@ -30,10 +30,10 @@ export async function GET(req: Request) {
     console.log("[Sync API] Starting scheduled sync job...");
 
     // 1. Run Ingestion for all projects
-    const ingestSummary = await runIngest();
+    const ingestSummary = await runIngest(null, 60000);
 
     // 2. Run Clustering for all projects
-    const clusterSummary = await runClustering();
+    const clusterSummary = await runClustering(null, 210000);
 
     console.log("[Sync API] Sync job complete.");
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import React, { Suspense } from "react";
 import Sidebar from "./Sidebar";
 import TextType from "@/components/TextType/TextType";
@@ -9,6 +9,9 @@ import styles from "./SidebarLayout.module.css";
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("project");
+
   if (pathname === "/login") {
     return <>{children}</>;
   }
@@ -31,6 +34,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
              showCursor={true}
              cursorCharacter="|"
            />
+           {projectId && (
+             <span className={styles.activeProjectText}>
+               Project: {projectId}
+             </span>
+           )}
          </header>
          <div className={styles.pageContent}>
            {children}

@@ -131,10 +131,12 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
   const [success, setSuccess] = useState("");
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
 
-  // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isEditMode) {
@@ -335,6 +337,32 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
     }
   };
 
+  const handleSync = async () => {
+    if (!id || !isEditMode) return;
+    setIsSyncing(true);
+    setSyncStatus("Syncing...");
+    setErrors({});
+    setSuccess("");
+
+    try {
+      const res = await fetch(`/api/projects/${id}/sync`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setSuccess(`Sync complete: ${data.ingest.postsInserted} new posts ingested, ${data.cluster.newClusters} new clusters created.`);
+        setSyncStatus(null);
+      } else {
+        const data = await res.json();
+        setErrors({ root: data.error || "Sync failed" });
+        setSyncStatus(null);
+      }
+    } catch (err) {
+      setErrors({ root: "An unexpected error occurred during sync" });
+      setSyncStatus(null);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
       
@@ -498,22 +526,49 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
         </div>
       )}
 
+      {syncStatus && (
+        <div style={{ background: 'var(--bg-card)', color: 'var(--text-main)', padding: '1rem', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span className={styles.spinner} style={{ width: '16px', height: '16px', border: '2px solid var(--text-muted)', borderTopColor: 'var(--text-main)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          {syncStatus}
+        </div>
+      )}
+
       <div className={styles.buttonRow}>
-        <SpecularButton
-          type="button"
-          size="md"
-          radius={10}
-          tint="#a0b4ff"
-          tintOpacity={0.06}
-          lineColor="#c0ccff"
-          baseColor="#525252"
-          intensity={0.85}
-          followMouse
-          proximity={150}
-          onClick={() => router.back()}
-        >
-          Cancel
-        </SpecularButton>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <SpecularButton
+            type="button"
+            size="md"
+            radius={10}
+            tint="#a0b4ff"
+            tintOpacity={0.06}
+            lineColor="#c0ccff"
+            baseColor="#525252"
+            intensity={0.85}
+            followMouse
+            proximity={150}
+            onClick={() => router.back()}
+          >
+            Cancel
+          </SpecularButton>
+          {isEditMode && (
+            <SpecularButton
+              type="button"
+              disabled={isSyncing}
+              size="md"
+              radius={10}
+              tint="#4C6FFF"
+              tintOpacity={0.1}
+              lineColor="#a0b4ff"
+              baseColor="#525252"
+              intensity={0.9}
+              followMouse
+              proximity={150}
+              onClick={handleSync}
+            >
+              {isSyncing ? "Syncing..." : "Sync Now"}
+            </SpecularButton>
+          )}
+        </div>
         <SpecularButton
           type="submit"
           disabled={loading}

@@ -37,6 +37,7 @@
   text-decoration: none;
   cursor: pointer;
   transition: opacity 0.2s ease;
+  position: relative; /* Add position relative so we can absolute position the project text */
 }
 
 .headerLink:hover {
@@ -44,10 +45,24 @@
 }
 
 .headerTitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-main);
   letter-spacing: -0.01em;
+}
+
+.activeProjectText {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  pointer-events: none;
 }
 
 .pageContent {

@@ -1,6 +1,6 @@
 # WatchTower - Backend API
 
-Multi-tenant backend API for an anticheat social-listening dashboard. This phase delivers the data layer (PostgreSQL + Prisma) and REST API (Next.js App Router) — no frontend, no AI, no real data ingestion.
+Multi-tenant backend API for a social-listening dashboard. This phase delivers the data layer (PostgreSQL + Prisma) and REST API (Next.js App Router) — no frontend, no AI, no real data ingestion.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ docker-compose up -d
 This launches PostgreSQL 16 on port 5432 with:
 - User: `postgres`
 - Password: `postgres`
-- Database: `anticheat_dashboard`
+- Database: `watchtower_dashboard`
 
 ### 2. Install Dependencies
 
@@ -37,7 +37,7 @@ cp .env.example .env
 
 Default connection string:
 ```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/anticheat_dashboard
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/watchtower_dashboard
 ```
 
 ### 4. Run Migrations
@@ -194,7 +194,7 @@ npm run cluster:project -- javelin
 ## Project Structure
 
 ```
-anticheat-dashboard/
+watchtower/
 ├── docker-compose.yml          # PostgreSQL 16
 ├── prisma/
 │   ├── schema.prisma           # 6 tables, 4 enums

@@ -1,4 +1,4 @@
-# Anticheat Dashboard — Phase 1: Backend API
+# WatchTower - Backend API
 
 Multi-tenant backend API for an anticheat social-listening dashboard. This phase delivers the data layer (PostgreSQL + Prisma) and REST API (Next.js App Router) — no frontend, no AI, no real data ingestion.
 
@@ -264,6 +264,27 @@ To deploy, set the following Environment Variables in the Vercel dashboard:
 - `SESSION_SECRET`: A secure random string (at least 32 characters) used to sign the session cookies.
 
 A health check endpoint is available at `GET /api/health` to confirm the database connection is alive after deployment.
+
+### Automated Scheduling (GitHub Actions)
+The ingestion and clustering pipeline can be automated via a secure webhook triggered by GitHub Actions.
+
+**Pre-Deploy Checklist for Vercel Hobby Tier:**
+> [!IMPORTANT]
+> The sync endpoint uses `export const maxDuration = 300` to allow enough time for LLM calls. On the Vercel Hobby plan, you **must** manually enable Fluid Compute in your Vercel project settings (Settings -> Functions -> Fluid Compute toggle) *before* deploying. If you do not enable this, the deployment will fail with an invalid maxDuration error.
+
+*(Note: Even with Fluid Compute disabled, the code has a 45-second safe early-exit threshold as a fallback, but the deploy will still fail if `maxDuration = 300` is deployed to a Hobby account without Fluid Compute toggled.)*
+
+> [!NOTE]
+> Vercel Hobby plans include a 4-hours/month limit for "Active CPU time" across all function invocations. Running this sync every 10 minutes is typically fine, since most wall-clock time is spent waiting on external LLM and DB requests (which don't count as active CPU). However, monitor your usage in the Vercel dashboard after a week to ensure heavy tasks (like HTML parsing) don't exceed this budget.
+
+**Post-Deploy Setup:**
+1. Generate a secure secret string for your webhook auth.
+2. In Vercel, set the `CRON_SECRET` environment variable to this string.
+3. In your GitHub repository, go to Settings -> Secrets and variables -> Actions, and add:
+   - `WATCHTOWER_APP_URL`: Your live Vercel deployment URL (e.g., `https://my-app.vercel.app`)
+   - `WATCHTOWER_CRON_SECRET`: The exact same secret string you put in Vercel.
+
+The scheduled sync will then run automatically every 10 minutes.
 
 ## Known Issues
 

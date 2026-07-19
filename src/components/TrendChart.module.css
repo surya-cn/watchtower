@@ -1,9 +1,12 @@
 .container {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background-color: var(--panel-bg);
+  backdrop-filter: var(--panel-backdrop);
+  -webkit-backdrop-filter: var(--panel-backdrop);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
   padding: 1.5rem;
   margin-top: 1.5rem;
+  box-shadow: var(--panel-shadow);
 }
 
 .header {
@@ -17,7 +20,7 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-main);
 }
 
 .controls {
@@ -27,23 +30,23 @@
 
 .controls button {
   background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-smooth);
 }
 
 .controls button:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
 }
 
 .controls button.active {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: var(--accent);
+  border-color: var(--accent);
   color: white;
 }
 
@@ -55,6 +58,6 @@
 }
 
 .loading, .empty {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-size: 0.875rem;
 }

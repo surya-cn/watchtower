@@ -1,8 +1,11 @@
 .container {
   background-color: var(--panel-bg);
-  border: 1px solid var(--border-color);
+  backdrop-filter: var(--panel-backdrop);
+  -webkit-backdrop-filter: var(--panel-backdrop);
+  border: 1px solid var(--border-light);
   border-radius: var(--border-radius);
   overflow: hidden;
+  box-shadow: var(--panel-shadow);
 }
 
 .tableWrapper {
@@ -28,8 +31,13 @@
   white-space: nowrap;
 }
 
+.table tbody tr {
+  transition: var(--transition-smooth);
+}
+
 .table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: rgba(99, 140, 255, 0.05);
+  box-shadow: inset 0 0 15px rgba(76, 111, 255, 0.1);
 }
 
 .table tbody tr:last-child td {

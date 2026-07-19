@@ -36,7 +36,7 @@ describe("PUT /api/projects/:id/config — validation", () => {
           id: "test-api-project",
           display_name: "Test API Project",
           config: {
-            sources: { reddit: null, twitter: null, ea_forum: null, discord: null },
+            sources: [],
             keywords: { include: [], exclude: [] },
             classification: { categories: ["test"], severity_thresholds: { high: 50, medium: 20 } },
             integrations: { bug_tracker: null, bug_tracker_project_key: null, webhook_url: null },
@@ -84,12 +84,7 @@ describe("PUT /api/projects/:id/config — validation", () => {
 
   it("rejects a config with wrong field types", async () => {
     const invalidConfig = {
-      sources: {
-        reddit: { subreddits: "not-an-array" }, // should be string[]
-        twitter: null,
-        ea_forum: null,
-        discord: null,
-      },
+      sources: [{ name: "test", url: "not-a-url" }],
       keywords: { include: [], exclude: [] },
       classification: {
         categories: [],
@@ -117,7 +112,7 @@ describe("PUT /api/projects/:id/config — validation", () => {
     expect(
       paths.some(
         (p: string) =>
-          p.includes("subreddits") ||
+          p.includes("url") ||
           p.includes("severity_thresholds") ||
           p.includes("high")
       )
@@ -126,12 +121,7 @@ describe("PUT /api/projects/:id/config — validation", () => {
 
   it("accepts a valid config", async () => {
     const validConfig = {
-      sources: {
-        reddit: { subreddits: ["test"] },
-        twitter: null,
-        ea_forum: null,
-        discord: null,
-      },
+      sources: [{ name: "Reddit", url: "https://reddit.com" }],
       keywords: { include: ["test"], exclude: [] },
       classification: {
         categories: ["test"],
@@ -152,7 +142,7 @@ describe("PUT /api/projects/:id/config — validation", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.sources.reddit.subreddits).toEqual(["test"]);
+    expect(body.sources[0].url).toEqual("https://reddit.com");
   });
 
   it("returns 404 for non-existent project", async () => {
@@ -170,7 +160,7 @@ describe("POST /api/projects — creation", () => {
           id: "test-api-project",
           display_name: "Test API Project",
           config: {
-            sources: { reddit: null, twitter: null, ea_forum: null, discord: null },
+            sources: [],
             keywords: { include: [], exclude: [] },
             classification: { categories: ["test"], severity_thresholds: { high: 50, medium: 20 } },
             integrations: { bug_tracker: null, bug_tracker_project_key: null, webhook_url: null },
@@ -195,15 +185,10 @@ describe("POST /api/projects — creation", () => {
         id: "test-api-project", // already exists from beforeAll
         display_name: "Duplicate",
         config: {
-          sources: {
-            reddit: null,
-            twitter: null,
-            ea_forum: null,
-            discord: null,
-          },
+          sources: [],
           keywords: { include: [], exclude: [] },
           classification: {
-            categories: [],
+            categories: ["test"],
             severity_thresholds: { high: 50, medium: 20 },
           },
           integrations: {
@@ -219,5 +204,188 @@ describe("POST /api/projects — creation", () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.error).toContain("already exists");
+  });
+
+  it("fails with a clear validation error if categories is submitted empty on CREATE", async () => {
+    const res = await api("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        id: "new-project-empty-cat",
+        display_name: "New Project Empty Cat",
+        config: {
+          sources: [{ name: "Reddit", url: "https://reddit.com" }],
+          keywords: { include: ["test"], exclude: [] },
+          classification: {
+            categories: [],
+            severity_thresholds: { high: 50, medium: 20 },
+          },
+          integrations: {
+            bug_tracker: null,
+            bug_tracker_project_key: null,
+            webhook_url: null,
+          },
+          team_contacts: [],
+        },
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("Validation failed");
+    const paths = body.details.map((d: any) => d.path);
+    expect(paths).toContain("config.classification.categories");
+  });
+
+  it("correctly pre-loads and can update an existing project's categories on EDIT", async () => {
+    // We already have "test-api-project" from beforeAll with categories: ["test"]
+    // We'll update it to have categories: ["updated-category"]
+    const res = await api("/api/projects/test-api-project/config", {
+      method: "PUT",
+      body: JSON.stringify({
+        sources: [{ name: "Reddit", url: "https://reddit.com" }],
+        keywords: { include: ["test"], exclude: [] },
+        classification: {
+          categories: ["updated-category", "second-category"],
+          severity_thresholds: { high: 50, medium: 20 },
+        },
+        integrations: {
+          bug_tracker: null,
+          bug_tracker_project_key: null,
+          webhook_url: null,
+        },
+        team_contacts: [],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.classification.categories).toEqual(["updated-category", "second-category"]);
+  });
+});
+
+describe("DELETE /api/projects/:id", () => {
+  beforeAll(async () => {
+    try {
+      // Create project 1 to delete
+      await prisma.project.delete({ where: { id: "delete-test-1" } }).catch(() => {});
+      await prisma.project.create({
+        data: {
+          id: "delete-test-1",
+          display_name: "To Be Deleted",
+          config: { sources: [], keywords: { include: [], exclude: [] }, classification: { categories: ["test"], severity_thresholds: { high: 50, medium: 20 } }, integrations: { bug_tracker: null, bug_tracker_project_key: null, webhook_url: null }, team_contacts: [] },
+        },
+      });
+
+      // Insert cascaded records for project 1
+      const cluster1 = await prisma.issueCluster.create({
+        data: {
+          id: "cluster-delete-1",
+          project_id: "delete-test-1",
+          title: "Delete Me",
+          category: "test",
+          first_reported_at: new Date(),
+          last_reported_at: new Date(),
+        }
+      });
+      await prisma.rawPost.create({
+        data: {
+          project_id: "delete-test-1",
+          cluster_id: cluster1.id,
+          source: "reddit",
+          source_post_id: "del1",
+          content: "Delete me post",
+          url: "http://del",
+          posted_at: new Date(),
+        }
+      });
+      await prisma.statusHistory.create({
+        data: {
+          project_id: "delete-test-1",
+          cluster_id: cluster1.id,
+          status: "new",
+        }
+      });
+
+      // Create project 2 for isolation
+      await prisma.project.delete({ where: { id: "delete-test-2" } }).catch(() => {});
+      await prisma.project.create({
+        data: {
+          id: "delete-test-2",
+          display_name: "Isolation Test",
+          config: { sources: [], keywords: { include: [], exclude: [] }, classification: { categories: ["test"], severity_thresholds: { high: 50, medium: 20 } }, integrations: { bug_tracker: null, bug_tracker_project_key: null, webhook_url: null }, team_contacts: [] },
+        },
+      });
+
+      const cluster2 = await prisma.issueCluster.create({
+        data: {
+          id: "cluster-delete-2",
+          project_id: "delete-test-2",
+          title: "Keep Me",
+          category: "test",
+          first_reported_at: new Date(),
+          last_reported_at: new Date(),
+        }
+      });
+      await prisma.rawPost.create({
+        data: {
+          project_id: "delete-test-2",
+          cluster_id: cluster2.id,
+          source: "reddit",
+          source_post_id: "keep1",
+          content: "Keep me post",
+          url: "http://keep",
+          posted_at: new Date(),
+        }
+      });
+      await prisma.statusHistory.create({
+        data: {
+          project_id: "delete-test-2",
+          cluster_id: cluster2.id,
+          status: "new",
+        }
+      });
+    } catch(e) {
+      console.error("CREATE ERROR in DELETE test:", e);
+      throw e;
+    }
+  });
+
+  afterAll(async () => {
+    // We clean up project 2, project 1 should already be deleted by the test
+    await prisma.statusHistory.deleteMany({ where: { project_id: "delete-test-2" } }).catch(() => {});
+    await prisma.rawPost.deleteMany({ where: { project_id: "delete-test-2" } }).catch(() => {});
+    await prisma.issueCluster.deleteMany({ where: { project_id: "delete-test-2" } }).catch(() => {});
+    await prisma.project.deleteMany({ where: { id: "delete-test-2" } }).catch(() => {});
+  });
+
+  it("returns 404 for non-existent project", async () => {
+    const res = await api("/api/projects/nonexistent", { method: "DELETE" });
+    expect(res.status).toBe(404);
+  });
+
+  it("successfully deletes the project and cascaded records without affecting other projects", async () => {
+    // 1. Delete project 1
+    const res = await api("/api/projects/delete-test-1", { method: "DELETE" });
+    expect(res.status).toBe(200);
+
+    // 2. Verify all 4 tables have 0 rows for project 1
+    const p1 = await prisma.project.findUnique({ where: { id: "delete-test-1" } });
+    expect(p1).toBeNull();
+    const clusters1 = await prisma.issueCluster.count({ where: { project_id: "delete-test-1" } });
+    expect(clusters1).toBe(0);
+    const posts1 = await prisma.rawPost.count({ where: { project_id: "delete-test-1" } });
+    expect(posts1).toBe(0);
+    const statuses1 = await prisma.statusHistory.count({ where: { project_id: "delete-test-1" } });
+    expect(statuses1).toBe(0);
+
+    // 3. Verify tenant isolation: project 2 remains untouched
+    const p2 = await prisma.project.findUnique({ where: { id: "delete-test-2" } });
+    expect(p2).not.toBeNull();
+    const clusters2 = await prisma.issueCluster.count({ where: { project_id: "delete-test-2" } });
+    expect(clusters2).toBeGreaterThan(0);
+    const posts2 = await prisma.rawPost.count({ where: { project_id: "delete-test-2" } });
+    expect(posts2).toBeGreaterThan(0);
+    const statuses2 = await prisma.statusHistory.count({ where: { project_id: "delete-test-2" } });
+    expect(statuses2).toBeGreaterThan(0);
   });
 });

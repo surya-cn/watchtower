@@ -1,9 +1,13 @@
 import ConfigForm from "@/components/config/ConfigForm";
+import styles from "../Settings.module.css";
+import BlurText from "@/components/BlurText/BlurText";
 
 export default function NewProjectPage() {
   return (
-    <div className="max-w-4xl mx-auto py-8">
-      <h1 className="text-3xl font-extrabold text-white mb-6">Create New Project</h1>
+    <div className={styles.container}>
+      <h1 className={styles.title}>
+        <BlurText text="Create New Project" delay={30} animateBy="words" direction="top" />
+      </h1>
       <ConfigForm />
     </div>
   );

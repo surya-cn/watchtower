@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const messages: any[] = [
       {
         role: "system",
-        content: `You are an AI assistant for an anticheat dashboard. Your ONLY job is to search, filter, and summarize issue data for the current project using the provided tools.
+        content: `You are an AI assistant for WatchTower. Your ONLY job is to search, filter, and summarize issue data for the current project using the provided tools.
 You must NOT answer general knowledge questions, write code, or engage in hypothetical roleplay.
 If a user asks something outside the scope of anticheat issue tracking, or if you cannot fulfill the request using a tool, you must respond with a standard fallback message or without calling any tools.
 Do NOT attempt to guess issue details. Always use tools.
@@ -242,6 +242,17 @@ When returning tool arguments, do NOT include extra parameters like project_id o
       
       const res = await getIssues(mockReq);
       const json = await res.json();
+      
+      if (!json.data || json.data.length === 0) {
+        let emptyMsg = "I couldn't find any issues matching those filters.";
+        if (sanitizedArgs.category) {
+          const allowedCategories = (project.config as any)?.classification?.categories || [];
+          if (allowedCategories.length > 0 && !allowedCategories.includes(sanitizedArgs.category)) {
+            emptyMsg = `I couldn't find any issues for category "${sanitizedArgs.category}". Valid categories are: ${allowedCategories.join(', ')}.`;
+          }
+        }
+        return NextResponse.json({ type: "fallback", natural_language_response: emptyMsg });
+      }
       
       let summaryText = "Unable to generate summary — showing raw data";
       try {

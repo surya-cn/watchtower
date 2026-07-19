@@ -49,17 +49,11 @@ async function main() {
       id: "javelin",
       display_name: "Project Javelin",
       config: {
-        sources: {
-          reddit: { subreddits: ["anticheat", "gamehacking", "Javelin"] },
-          twitter: {
-            search_terms: [
-              "javelin anticheat",
-              "javelin cheat detection",
-            ],
-          },
-          ea_forum: null,
-          discord: { server_ids: ["123456789"] },
-        },
+        sources: [
+          // NOTE: This URL is illustrative. A real RSS feed would be needed here now that OAuth is unused.
+          { name: "Reddit r/javelin", url: "https://reddit.com/r/Javelin.rss" },
+          { name: "Twitter Search", url: "https://api.twitter.com/search?q=javelin" }
+        ],
         keywords: {
           include: [
             "aimbot",
@@ -89,7 +83,7 @@ async function main() {
           webhook_url: null,
         },
         team_contacts: [
-          "anticheat-lead@javelin.dev",
+          "WatchTower-lead@javelin.dev",
           "security@javelin.dev",
         ],
       },
@@ -101,12 +95,10 @@ async function main() {
       id: "demo-title",
       display_name: "Demo Title",
       config: {
-        sources: {
-          reddit: { subreddits: ["DemoTitle", "DemoTitleAC"] },
-          twitter: null,
-          ea_forum: null,
-          discord: null,
-        },
+        sources: [
+          // NOTE: This URL is illustrative.
+          { name: "Reddit r/DemoTitle", url: "https://reddit.com/r/DemoTitle.rss" }
+        ],
         keywords: {
           include: ["aimbot", "wallhack", "cheat", "ban"],
           exclude: ["fan art"],
@@ -151,7 +143,7 @@ async function main() {
       author: "xFrag_King",
       content:
         "Got banned for aimbot after the v3.2 patch but I've never cheated. My aim was just on point that game. This is insane, false positive for sure.",
-      url: "https://reddit.com/r/anticheat/comments/ab12c1/false_positive_aimbot_v32",
+      url: "https://reddit.com/r/WatchTower/comments/ab12c1/false_positive_aimbot_v32",
       posted_at: daysAgo(10),
     },
     {
@@ -159,7 +151,7 @@ async function main() {
       source_post_id: "t3_ab12c2",
       author: "SniperElite99",
       content:
-        "Same here — played 3 rounds of ranked and got flagged for aimbot. I've been playing this game since beta, never used any cheats. The new anti-cheat is way too aggressive.",
+        "Same here — played 3 rounds of ranked and got flagged for aimbot. I've been playing this game since beta, never used any cheats. The new WatchTower is way too aggressive.",
       url: "https://reddit.com/r/Javelin/comments/ab12c2/aimbot_false_ban_wave",
       posted_at: daysAgo(9),
     },
@@ -168,7 +160,7 @@ async function main() {
       source_post_id: "tw_17382910001",
       author: "@ProGamerJen",
       content:
-        "Just got hit with an aimbot ban on Javelin after the v3.2 update. I stream every session — go watch the VOD, no cheats. Fix your anticheat! #JavelinAC #FalsePositive",
+        "Just got hit with an aimbot ban on Javelin after the v3.2 update. I stream every session — go watch the VOD, no cheats. Fix your WatchTower! #JavelinAC #FalsePositive",
       url: "https://twitter.com/ProGamerJen/status/17382910001",
       posted_at: daysAgo(8),
     },
@@ -289,7 +281,7 @@ async function main() {
       source_post_id: "steam_disc_883001",
       author: "MapExplorer_X",
       content:
-        "Recorded a clip where a player tracked me through three solid walls on Dustyard. Uploaded to YouTube. This is clearly wallhack and the anticheat didn't catch it.",
+        "Recorded a clip where a player tracked me through three solid walls on Dustyard. Uploaded to YouTube. This is clearly wallhack and the WatchTower didn't catch it.",
       url: "https://store.steampowered.com/app/112233/Javelin/#discussions/0/883001",
       posted_at: daysAgo(12),
     },
@@ -307,7 +299,7 @@ async function main() {
       source_post_id: "disc_msg_440001",
       author: "GhostRecon#8821",
       content:
-        "Just encountered another wallhacker on Dustyard ranked. They pre-aimed every corner. Reported in-game but nothing happened. Is the anticheat even scanning for ESP?",
+        "Just encountered another wallhacker on Dustyard ranked. They pre-aimed every corner. Reported in-game but nothing happened. Is the WatchTower even scanning for ESP?",
       url: "https://discord.com/channels/123456789/987654321/440001",
       posted_at: daysAgo(7),
     },
@@ -317,7 +309,7 @@ async function main() {
       author: "TrustTheProcess",
       content:
         "Dustyard wallhack issue is getting worse. Played 10 games today and at least 3 had suspicious players who could see through walls. The geometry on that map might be leaking player positions.",
-      url: "https://reddit.com/r/anticheat/comments/wh20a2/dustyard_wallhack_still_happening",
+      url: "https://reddit.com/r/WatchTower/comments/wh20a2/dustyard_wallhack_still_happening",
       posted_at: daysAgo(5),
     },
   ];
@@ -385,7 +377,7 @@ async function main() {
       author: "PCBuilder_2025",
       content:
         "Same issue here. Swapped my motherboard and now I'm hardware banned. The HWID fingerprint changed and their system flagged me as a ban evader. This is absurd.",
-      url: "https://reddit.com/r/anticheat/comments/hwid02/hwid_mismatch_wrongful_ban",
+      url: "https://reddit.com/r/WatchTower/comments/hwid02/hwid_mismatch_wrongful_ban",
       posted_at: daysAgo(3),
     },
     {
@@ -445,7 +437,7 @@ async function main() {
     {
       source: Source.ea_forum,
       source_post_id: "ea_post_990001",
-      author: "AntiCheatResearcher",
+      author: "WatchTowerResearcher",
       content:
         "Technical analysis: Javelin's HWID fingerprinting relies on a combination of CPU ID, GPU serial, and disk serial. Any change to 2+ components triggers a ban evasion flag. This threshold is too aggressive.",
       url: "https://forums.ea.com/discussions/990001/javelin-hwid-analysis",
@@ -610,7 +602,7 @@ async function main() {
       source_post_id: "steam_disc_886001",
       author: "FairPlayAdvocate",
       content:
-        "Reporting a speed hack on competitive servers. One player was running at inhuman speeds. Clip attached in the Steam discussion thread. Anticheat didn't flag them.",
+        "Reporting a speed hack on competitive servers. One player was running at inhuman speeds. Clip attached in the Steam discussion thread. WatchTower didn't flag them.",
       url: "https://store.steampowered.com/app/112233/Javelin/#discussions/0/886001",
       posted_at: daysAgo(18),
     },
@@ -706,7 +698,7 @@ async function main() {
       source_post_id: "t3_demo_ab02",
       author: "DT_Veteran",
       content:
-        "Aimbot problem in casual is getting out of hand. Played 5 games tonight, 3 of them had obvious aimbotters. The anticheat needs to be more aggressive in casual mode too, not just ranked.",
+        "Aimbot problem in casual is getting out of hand. Played 5 games tonight, 3 of them had obvious aimbotters. The WatchTower needs to be more aggressive in casual mode too, not just ranked.",
       url: "https://reddit.com/r/DemoTitleAC/comments/demo_ab02/casual_aimbot_wave",
       posted_at: daysAgo(3),
     },

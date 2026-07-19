@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./IssuesTable.module.css";
+import SpecularButton from "./SpecularButton/SpecularButton";
 import { apiClient } from "../lib/apiClient";
 import IssueDetailSlideOver from "./IssueDetailSlideOver";
 
@@ -45,6 +46,29 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const urlSearch = searchParams.get("search") || "";
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+
+  useEffect(() => {
+    setSearchQuery(urlSearch);
+  }, [urlSearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery !== urlSearch) {
+        const newParams = new URLSearchParams(searchParams.toString());
+        if (searchQuery) {
+          newParams.set("search", searchQuery);
+        } else {
+          newParams.delete("search");
+        }
+        newParams.set("page", "1");
+        router.push(`/?${newParams.toString()}`, { scroll: false });
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, urlSearch, searchParams, router]);
+
   const fetchIssues = useCallback(async () => {
     if (!projectId || isCompletelyEmpty) {
       setLoading(false);
@@ -81,13 +105,13 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
       newParams.delete(key);
     }
     newParams.set("page", "1"); // reset to page 1
-    router.push(`/?${newParams.toString()}`);
+    router.push(`/?${newParams.toString()}`, { scroll: false });
   };
 
   const clearFilters = () => {
     const newParams = new URLSearchParams();
     newParams.set("project", projectId);
-    router.push(`/?${newParams.toString()}`);
+    router.push(`/?${newParams.toString()}`, { scroll: false });
   };
 
   const hasActiveFilters = Array.from(searchParams.keys()).some(
@@ -122,7 +146,7 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
   const handlePageChange = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams.toString());
     newParams.set("page", newPage.toString());
-    router.push(`/?${newParams.toString()}`);
+    router.push(`/?${newParams.toString()}`, { scroll: false });
   };
 
   if (isCompletelyEmpty) return null; // Metric cards row already handles this
@@ -137,8 +161,8 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
             className={styles.filterInput}
             type="text"
             placeholder="Search titles..."
-            value={searchParams.get("search") || ""}
-            onChange={(e) => updateFilter("search", e.target.value)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         
@@ -203,9 +227,20 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
         </div>
 
         {hasActiveFilters && (
-          <button className={styles.clearBtn} onClick={clearFilters}>
+          <SpecularButton
+            size="sm"
+            radius={8}
+            tint="#a0b4ff"
+            tintOpacity={0.08}
+            lineColor="#c0ccff"
+            baseColor="#525252"
+            intensity={0.9}
+            followMouse
+            proximity={120}
+            onClick={clearFilters}
+          >
             Clear filters
-          </button>
+          </SpecularButton>
         )}
       </div>
 
@@ -273,12 +308,20 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
                       {relativeTime(issue.last_reported_at)}
                     </td>
                     <td>
-                      <button 
-                        className={styles.actionBtn}
+                      <SpecularButton
+                        size="sm"
+                        radius={8}
+                        tint="#4C6FFF"
+                        tintOpacity={0.12}
+                        lineColor="#a0b4ff"
+                        baseColor="#3a5acc"
+                        intensity={1.0}
+                        followMouse
+                        proximity={100}
                         onClick={() => setSelectedIssueId(issue.id)}
                       >
                         View
-                      </button>
+                      </SpecularButton>
                     </td>
                   </tr>
                 );
@@ -293,21 +336,37 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
         <div className={styles.pagination}>
           <span>Showing {data.data.length} of {data.pagination.total_count} issues</span>
           <div className={styles.pageControls}>
-            <button 
-              className={styles.pageBtn}
+            <SpecularButton
               disabled={data.pagination.page <= 1}
+              size="sm"
+              radius={8}
+              tint="#a0b4ff"
+              tintOpacity={0.08}
+              lineColor="#c0ccff"
+              baseColor="#525252"
+              intensity={0.9}
+              followMouse
+              proximity={100}
               onClick={() => handlePageChange(data.pagination.page - 1)}
             >
               Previous
-            </button>
+            </SpecularButton>
             <span>Page {data.pagination.page} of {data.pagination.total_pages}</span>
-            <button 
-              className={styles.pageBtn}
+            <SpecularButton
               disabled={data.pagination.page >= data.pagination.total_pages}
+              size="sm"
+              radius={8}
+              tint="#a0b4ff"
+              tintOpacity={0.08}
+              lineColor="#c0ccff"
+              baseColor="#525252"
+              intensity={0.9}
+              followMouse
+              proximity={100}
               onClick={() => handlePageChange(data.pagination.page + 1)}
             >
               Next
-            </button>
+            </SpecularButton>
           </div>
         </div>
       )}

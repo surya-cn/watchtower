@@ -11,7 +11,7 @@ describe("GET /api/metrics/trend", () => {
   beforeAll(async () => {
     // 1. Create two projects
     const defaultConfig = {
-      sources: { reddit: null, twitter: null, ea_forum: null, discord: null },
+      sources: [],
       keywords: { include: [], exclude: [] },
       classification: { categories: ["test"], severity_thresholds: { high: 50, medium: 20 } },
       integrations: { bug_tracker: null, bug_tracker_project_key: null, webhook_url: null },

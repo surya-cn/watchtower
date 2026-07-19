@@ -4,21 +4,14 @@ import Parser from "rss-parser";
 
 const parser = new Parser();
 
-export const eaForumConnector: SourceConnector = {
-  name: "ea_forum",
-  async fetchPosts(
-    config: ProjectConfig["sources"]["ea_forum"],
-    since: Date | null
-  ): Promise<RawPostInput[]> {
-    if (!config || !config.urls || config.urls.length === 0) {
-      return [];
-    }
-
-    const allPosts: RawPostInput[] = [];
-    const sinceTime = since ? since.getTime() : 0;
-
-    for (const url of config.urls) {
-      try {
+export async function fetchGenericSource(
+  url: string,
+  since: Date | null
+): Promise<RawPostInput[]> {
+  const allPosts: RawPostInput[] = [];
+  const sinceTime = since ? since.getTime() : 0;
+  
+  try {
         const res = await fetch(url, {
           headers: {
             "User-Agent": "AnticheatDashboard/1.0",
@@ -49,8 +42,7 @@ export const eaForumConnector: SourceConnector = {
             const feed = await parser.parseString(rawText);
             items = feed.items || [];
           } catch (rssError) {
-            console.error(`[EA Forum Connector] Failed to parse both JSON and RSS for URL: ${url}`);
-            continue; // Skip this feed if unparsable
+            throw new Error(`no supported parsing strategy for this URL`);
           }
         }
 
@@ -91,12 +83,9 @@ export const eaForumConnector: SourceConnector = {
             posted_at: postedAt,
           });
         }
-      } catch (err) {
-        console.error(`[EA Forum Connector] Network or fatal error fetching URL: ${url}`, err);
-        // Continue to the next URL
-      }
+    } catch (err) {
+      throw err;
     }
 
-    return allPosts;
-  },
-};
+  return allPosts;
+}

@@ -39,3 +39,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# databases
+*.db
+*.sqlite
+*.sqlite-journal
+
+# scratch scripts
+capture_*.js
+check_*.ts
+cleanup_*.ts
+test_*.js
+test_*.ts
+add_use_client.js
+jsrepo_installer.js
+scroll_test.js
+verify_posts.ts
+fetch_raw.ts
+clear_keywords.ts
+create_project_test.js
+check_*.js
+cleanup.ts

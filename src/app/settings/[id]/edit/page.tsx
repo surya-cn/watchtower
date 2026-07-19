@@ -2,6 +2,8 @@ import ConfigForm from "@/components/config/ConfigForm";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ProjectConfigSchema } from "@/lib/schemas";
+import styles from "../../Settings.module.css";
+import BlurText from "@/components/BlurText/BlurText";
 
 export default async function EditProjectPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -17,7 +19,7 @@ export default async function EditProjectPage(props: { params: Promise<{ id: str
   const parsedConfig = ProjectConfigSchema.safeParse(project.config);
   
   if (!parsedConfig.success) {
-    return <div className="text-red-500 p-8">Project configuration is invalid in the database.</div>;
+    return <div className={styles.container}>Project configuration is invalid in the database.</div>;
   }
 
   const initialData = {
@@ -27,8 +29,10 @@ export default async function EditProjectPage(props: { params: Promise<{ id: str
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-3xl font-extrabold text-white mb-6">Edit Configuration: {project.display_name}</h1>
+    <div className={styles.container}>
+      <h1 className={styles.title}>
+        <BlurText text={`Edit Configuration: ${project.display_name}`} delay={30} animateBy="words" direction="top" />
+      </h1>
       <ConfigForm initialData={initialData} isEditMode={true} />
     </div>
   );

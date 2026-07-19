@@ -1,0 +1,126 @@
+.card {
+  max-width: 28rem;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.03); /* Glassmorphism background */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); /* Deep shadow for glass effect */
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle white border */
+  
+  /* Barely visible default state per requirements */
+  opacity: 0.15;
+  filter: brightness(0.6) blur(2px);
+  transition: opacity 1s ease, filter 1s ease, box-shadow var(--transition-smooth), transform var(--transition-smooth);
+  z-index: 10;
+  position: relative;
+}
+
+.cardHovered {
+  opacity: 1;
+  filter: brightness(1) blur(0px);
+  /* The transition should feel like the light slowly reveals it */
+  transition: opacity 0.8s ease-out, filter 0.8s ease-out;
+}
+
+.header {
+  margin-bottom: var(--spacing-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.blurText {
+  justify-content: center;
+}
+
+.title {
+  font-size: 1.875rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: var(--spacing-sm);
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.input {
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  font-size: 0.875rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.inputTop {
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+  border-bottom: none;
+}
+
+.inputBottom {
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+}
+
+.error {
+  color: var(--severity-high);
+  font-size: 0.875rem;
+  text-align: center;
+  font-weight: 500;
+  background-color: var(--severity-high-bg);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.submitBtn {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--border-radius);
+  color: var(--text-main);
+  background-color: var(--accent);
+  transition: background-color 0.2s;
+  margin-top: var(--spacing-sm);
+}
+
+.submitBtn:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+.submitBtn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--accent);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

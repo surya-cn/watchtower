@@ -25,7 +25,7 @@ describe("POST /api/chat", () => {
 
   beforeAll(async () => {
     const defaultConfig = {
-      sources: { reddit: null, twitter: null, ea_forum: null, discord: null },
+      sources: [],
       keywords: { include: [], exclude: [] },
       classification: { categories: ["test"], severity_thresholds: { high: 50, medium: 20 } },
       integrations: { bug_tracker: null, bug_tracker_project_key: null, webhook_url: null },
@@ -204,6 +204,61 @@ describe("POST /api/chat", () => {
     
     expect(json.type).toBe("detail");
     expect(json.data.id).toBe(clusterId);
+  });
+
+  it("should generate a summary if issues are found", async () => {
+    vi.mocked(client.chat.completions.create)
+      .mockResolvedValueOnce({
+        choices: [{
+          message: {
+            tool_calls: [{
+              function: {
+                name: "summarize_issues",
+                arguments: JSON.stringify({ category: "bug" })
+              }
+            }]
+          }
+        }]
+      } as any)
+      .mockResolvedValueOnce({
+        choices: [{
+          message: {
+            content: "This is a summary of the bugs."
+          }
+        }]
+      } as any);
+
+    const req = makeReq({ message: "summarize bugs" });
+    const res = await POST(req);
+    const json = await res.json();
+    
+    expect(json.type).toBe("summary");
+    expect(json.natural_language_response).toBe("This is a summary of the bugs.");
+  });
+
+  it("should return a graceful fallback if summarize_issues finds 0 results", async () => {
+    vi.mocked(client.chat.completions.create).mockResolvedValueOnce({
+      choices: [{
+        message: {
+          tool_calls: [{
+            function: {
+              name: "summarize_issues",
+              arguments: JSON.stringify({ category: "nonexistent_category" })
+            }
+          }]
+        }
+      }]
+    } as any);
+
+    const req = makeReq({ message: "summarize nonexistent_category" });
+    const res = await POST(req);
+    const json = await res.json();
+    
+    expect(json.type).toBe("fallback");
+    expect(json.natural_language_response).toContain("I couldn't find any issues for category \"nonexistent_category\"");
+    expect(json.natural_language_response).toContain("Valid categories are: test");
+    // Ensure the second LLM call was NOT made
+    expect(client.chat.completions.create).toHaveBeenCalledTimes(1);
   });
 
   it("should return fallback for ambiguous fuzzy matching", async () => {

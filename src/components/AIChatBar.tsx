@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./AIChatBar.module.css";
+import SpecularButton from './SpecularButton/SpecularButton';
 import { apiClient } from "../lib/apiClient";
 
 interface Message {
@@ -30,7 +31,7 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
   }, [projectId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,7 +70,7 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
         if (data.category) params.set("category", data.category);
         else params.delete("category");
         
-        router.push(`/?${params.toString()}`);
+        router.push(`/?${params.toString()}`, { scroll: false });
         assistantContent = "I've applied those filters to the dashboard.";
       } else if (type === "detail") {
         onOpenIssue(data.id);
@@ -93,6 +94,9 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
           {messages.map((msg, idx) => (
             <div key={idx} className={`${styles.message} ${styles[msg.role]}`}>
               <div className={styles.messageContent}>
+                {msg.role === "assistant" && (
+                  <img src="/lighthouse.png" alt="WatchTower" style={{ width: '16px', height: '16px', marginRight: '8px', verticalAlign: 'text-bottom' }} />
+                )}
                 {msg.content}
               </div>
             </div>
@@ -100,6 +104,7 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
           {loading && (
             <div className={`${styles.message} ${styles.assistant}`}>
               <div className={styles.messageContent}>
+                <img src="/lighthouse.png" alt="WatchTower" style={{ width: '16px', height: '16px', marginRight: '8px', verticalAlign: 'text-bottom' }} />
                 <span className={styles.typingIndicator}>...</span>
               </div>
             </div>
@@ -115,11 +120,22 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask AI to filter, summarize, or explain issues..."
           className={styles.input}
-          disabled={loading}
         />
-        <button type="submit" className={styles.sendButton} disabled={!input.trim() || loading}>
+        <SpecularButton
+          type="submit"
+          disabled={!input.trim() || loading}
+          size="sm"
+          radius={8}
+          tint="#4C6FFF"
+          tintOpacity={0.2}
+          lineColor="#a0b4ff"
+          baseColor="#3a5acc"
+          intensity={1.1}
+          followMouse
+          proximity={150}
+        >
           Send
-        </button>
+        </SpecularButton>
       </form>
     </div>
   );

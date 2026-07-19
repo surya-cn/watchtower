@@ -26,7 +26,7 @@ export async function classifyAndMatchPost(
   allowedCategories: string[],
   existingClusters: ExistingCluster[]
 ): Promise<ClassifyAndMatchResult> {
-  const systemPrompt = `You are an AI triaging user posts for an anticheat dashboard.
+  const systemPrompt = `You are an AI triaging user posts for WatchTower.
 You must categorize the post into exactly one of the allowed categories: [${allowedCategories.join(", ")}].
 You are provided a list of existing clusters. Determine if the post describes an issue that matches one of these existing clusters.
 If it does, return the matched_cluster_id. If it describes a distinct new issue, mark is_new_issue as true and suggest a short, descriptive title for the new cluster (3-6 words).

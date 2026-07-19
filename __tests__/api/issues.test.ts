@@ -206,7 +206,7 @@ describe("PATCH /api/issues/:id/status", () => {
         id: "test-patch-project",
         display_name: "Test Patch Project",
         config: {
-          sources: { reddit: null, twitter: null, ea_forum: null, discord: null },
+          sources: [],
           keywords: { include: [], exclude: [] },
           classification: { categories: ["test"], severity_thresholds: { high: 50, medium: 20 } },
           integrations: { bug_tracker: null, bug_tracker_project_key: null, webhook_url: null },
@@ -253,8 +253,12 @@ describe("PATCH /api/issues/:id/status", () => {
       }),
     });
 
-    expect(res.status).toBe(200);
     const body = await res.json();
+    if (res.status !== 200) {
+      console.error("PATCH FAILED:", res.status, body);
+    }
+
+    expect(res.status).toBe(200);
     expect(body.status).toBe("active");
     // Verify status_history includes the new entry
     expect(body.status_history).toBeDefined();

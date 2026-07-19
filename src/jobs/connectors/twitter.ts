@@ -1,3 +1,4 @@
+// UNUSED as of the generic sources change — no longer wired into the orchestrator. Kept for potential future reintroduction of typed, authenticated connectors.
 import { SourceConnector, RawPostInput } from "./types";
 import { ProjectConfig } from "@/lib/schemas";
 

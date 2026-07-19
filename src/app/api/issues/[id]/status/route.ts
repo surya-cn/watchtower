@@ -33,6 +33,7 @@ export async function PATCH(
     });
 
     if (!existing) {
+      console.error(`DEBUG: Issue not found in PATCH. id=${id}, projectId=${projectId}`);
       return notFound("Issue not found");
     }
 

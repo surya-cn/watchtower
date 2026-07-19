@@ -1,17 +1,26 @@
 import "dotenv/config";
 import { prisma } from "@/lib/prisma";
-import { connectors } from "./connectors";
 import { RawPostInput } from "./connectors/types";
 import { ProjectConfigSchema, ProjectConfig } from "@/lib/schemas";
 
-export async function runIngest(targetProjectId: string | null = null) {
+export interface IngestResult {
+  projectsProcessed: number;
+  postsInserted: number;
+  errors: string[];
+  stoppedEarly: boolean;
+}
+
+export async function runIngest(targetProjectId: string | null = null): Promise<IngestResult> {
+  const startTime = Date.now();
+  const MAX_DURATION_MS = 45000;
+  let stoppedEarly = false;
   const projects = await prisma.project.findMany({
     where: targetProjectId ? { id: targetProjectId } : undefined,
   });
 
   if (projects.length === 0) {
     console.log(`No projects found${targetProjectId ? ` matching ID: ${targetProjectId}` : ""}.`);
-    return;
+    return { projectsProcessed: 0, postsInserted: 0, errors: [], stoppedEarly: false };
   }
 
   let totalProjectsProcessed = 0;
@@ -19,6 +28,12 @@ export async function runIngest(targetProjectId: string | null = null) {
   const errors: string[] = [];
 
   for (const project of projects) {
+    if (Date.now() - startTime > MAX_DURATION_MS) {
+      console.log(`[Ingest] Stopping early - reached time limit of ${MAX_DURATION_MS}ms. More work remains for next run.`);
+      stoppedEarly = true;
+      break;
+    }
+
     totalProjectsProcessed++;
     console.log(`\n======================================`);
     console.log(`Processing Project: ${project.id}`);
@@ -33,34 +48,56 @@ export async function runIngest(targetProjectId: string | null = null) {
     }
     const config = parseResult.data;
 
-    for (const [sourceName, connector] of Object.entries(connectors)) {
-      const sourceConfig = config.sources[sourceName as keyof ProjectConfig["sources"]];
-      
-      console.log(`[Project ${project.id}] Starting connector: ${sourceName}`);
-
-      if (!sourceConfig) {
-        console.log(`  -> Skipping ${sourceName} for ${project.id}: not configured`);
-        continue;
+    for (const sourceConfig of config.sources) {
+      if (Date.now() - startTime > MAX_DURATION_MS) {
+        console.log(`[Ingest] Stopping early - reached time limit of ${MAX_DURATION_MS}ms. More work remains for next run.`);
+        stoppedEarly = true;
+        break;
       }
 
-      if (sourceName === "reddit") {
-        if (!process.env.REDDIT_CLIENT_ID || !process.env.REDDIT_CLIENT_SECRET) {
-          console.log(`  -> Skipping reddit for ${project.id}: missing REDDIT_CLIENT_ID or REDDIT_CLIENT_SECRET`);
-          continue;
-        }
-      }
+      console.log(`[Project ${project.id}] Fetching posts from: ${sourceConfig.name}`);
 
       try {
+        // Derive source enum from URL for database compatibility
+        const urlLower = sourceConfig.url.toLowerCase();
+        let dbSource: any = "ea_forum";
+        if (urlLower.includes("reddit.com")) dbSource = "reddit";
+        else if (urlLower.includes("twitter.com") || urlLower.includes("x.com")) dbSource = "twitter";
+        else if (urlLower.includes("discord.com")) dbSource = "discord";
+        else if (urlLower.includes("steam")) dbSource = "steam";
+
         const lastPost = await prisma.rawPost.aggregate({
           _max: { posted_at: true },
           where: {
             project_id: project.id,
-            source: sourceName as any,
+            source: dbSource,
           },
         });
         const since = lastPost._max.posted_at;
 
-        const fetchedPosts: RawPostInput[] = await connector.fetchPosts(sourceConfig as any, since);
+        // Use generic connector for all sources
+        const { fetchGenericSource } = await import("./connectors/generic");
+        
+        let fetchedPosts: RawPostInput[] = [];
+        
+        try {
+          fetchedPosts = await fetchGenericSource(sourceConfig.url, since);
+        } catch (fetchErr: any) {
+          if (fetchErr.message && fetchErr.message.includes("no supported parsing strategy")) {
+            // Fallback to Steam Connector if applicable
+            const urlLower = sourceConfig.url.toLowerCase();
+            if (urlLower.includes("steamcommunity.com") && urlLower.includes("/discussions")) {
+              const { fetchSteamDiscussions } = await import("./connectors/steam_discussions");
+              fetchedPosts = await fetchSteamDiscussions(sourceConfig.url, since);
+            } else {
+              // Not a steam URL, and JSON/RSS failed.
+              throw fetchErr;
+            }
+          } else {
+            // A network or other fatal error
+            throw fetchErr;
+          }
+        }
 
         if (fetchedPosts.length === 0) {
           console.log(`  -> Fetched 0 posts (since: ${since ? since.toISOString() : "beginning"}).`);
@@ -72,7 +109,6 @@ export async function runIngest(targetProjectId: string | null = null) {
 
         const filteredPosts = fetchedPosts.filter((post) => {
           const content = post.content.toLowerCase();
-          // Empty include array means "match everything" (no include filter applied)
           const hasInclude = includes.length === 0 || includes.some((k) => content.includes(k));
           const hasExclude = excludes.some((k) => content.includes(k));
           return hasInclude && !hasExclude;
@@ -82,7 +118,7 @@ export async function runIngest(targetProjectId: string | null = null) {
         if (filteredPosts.length > 0) {
           const insertData = filteredPosts.map((post) => ({
             project_id: project.id,
-            source: sourceName as any,
+            source: dbSource,
             source_post_id: post.source_post_id,
             author: post.author,
             content: post.content,
@@ -103,10 +139,14 @@ export async function runIngest(targetProjectId: string | null = null) {
           `  -> Fetched: ${fetchedPosts.length} | Filtered: ${filteredPosts.length} (passed) | Duplicates: ${duplicates} | Inserted: ${insertedCount}`
         );
       } catch (err: any) {
-        const msg = `[Project ${project.id}] Connector '${sourceName}' failed: ${err.message}`;
+        const msg = `[Project ${project.id}] Failed to fetch from '${sourceConfig.name}': ${err.message}`;
         console.error(msg);
         errors.push(msg);
       }
+    }
+    
+    if (stoppedEarly) {
+      break;
     }
   }
 
@@ -121,6 +161,13 @@ export async function runIngest(targetProjectId: string | null = null) {
   } else {
     console.log(`\nNo errors encountered.`);
   }
+
+  return {
+    projectsProcessed: totalProjectsProcessed,
+    postsInserted: totalPostsInserted,
+    errors,
+    stoppedEarly,
+  };
 }
 
 // Check if this script is being run directly from the CLI

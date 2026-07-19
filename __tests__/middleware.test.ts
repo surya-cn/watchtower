@@ -10,7 +10,7 @@ beforeAll(async () => {
     data: {
       id: testProjectId,
       display_name: "MW Test Project",
-      config: { sources: { reddit: null, twitter: null, ea_forum: null, discord: null } },
+      config: { sources: [] },
     }
   });
 

@@ -3,26 +3,16 @@ import { z } from "zod";
 // ─── Project Config Schema ───────────────────────────────────────
 
 export const ProjectConfigSchema = z.object({
-  sources: z.object({
-    reddit: z
-      .object({ subreddits: z.array(z.string()) })
-      .nullable(),
-    twitter: z
-      .object({ search_terms: z.array(z.string()) })
-      .nullable(),
-    ea_forum: z
-      .object({ urls: z.array(z.string()) })
-      .nullable(),
-    discord: z
-      .object({ server_ids: z.array(z.string()) })
-      .nullable(),
-  }),
+  sources: z.array(z.object({
+    name: z.string().min(1),
+    url: z.string().url(),
+  })),
   keywords: z.object({
     include: z.array(z.string()),
     exclude: z.array(z.string()),
   }),
   classification: z.object({
-    categories: z.array(z.string()),
+    categories: z.array(z.string()).min(1, "At least one category is required"),
     severity_thresholds: z.object({
       high: z.number(),
       medium: z.number(),

@@ -1,0 +1,19 @@
+name: Scheduled Sync
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Every 10 minutes
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Sync API
+        run: |
+          echo "Triggering WatchTower sync job..."
+          # The -f flag tells curl to fail silently (but return a non-zero exit code) on server errors
+          # The -s flag makes it silent, and -S shows the error if it fails
+          curl -f -s -S -X POST "${{ secrets.WATCHTOWER_APP_URL }}/api/jobs/sync" \
+            -H "Authorization: Bearer ${{ secrets.WATCHTOWER_CRON_SECRET }}" \
+            -H "Content-Type: application/json"

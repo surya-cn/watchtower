@@ -10,6 +10,7 @@ export async function proxy(request: NextRequest) {
   const isPublicRoute = 
     pathname === '/login' ||
     pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/jobs/') ||
     pathname === '/api/health' ||
     pathname.startsWith('/_next/') ||
     (!pathname.startsWith('/api/') && pathname.includes('.')) // safely allow public assets (e.g. .svg) but never bypass /api/ routes

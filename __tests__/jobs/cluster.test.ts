@@ -18,7 +18,7 @@ async function setupProject() {
       id: projectId,
       display_name: "Test Cluster Project",
       config: {
-        sources: { reddit: null, twitter: null, ea_forum: null, discord: null },
+        sources: [],
         keywords: { include: [], exclude: [] },
         classification: {
           categories: ["bug", "exploit", "crash"],

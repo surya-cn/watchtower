@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ProjectConfig } from "@/lib/schemas";
+import styles from "./ConfigForm.module.css";
+import SpecularButton from "@/components/SpecularButton/SpecularButton";
 
 type ConfigFormProps = {
   initialData?: {
@@ -13,7 +15,6 @@ type ConfigFormProps = {
   isEditMode?: boolean;
 };
 
-// Simple TagInput component for array fields
 function TagInput({
   label,
   value,
@@ -47,19 +48,16 @@ function TagInput({
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <label className="font-medium text-sm text-gray-300">{label}</label>
-      <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-800 border border-gray-600 rounded-md focus-within:border-blue-500">
+    <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
+      <label className={styles.label}>{label}</label>
+      <div className={styles.tagContainer}>
         {value.map((tag) => (
-          <span
-            key={tag}
-            className="flex items-center gap-1 bg-blue-900/50 text-blue-200 px-2 py-1 rounded text-sm"
-          >
+          <span key={tag} className={styles.tag}>
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
-              className="text-blue-400 hover:text-blue-100 font-bold"
+              className={styles.tagRemove}
             >
               &times;
             </button>
@@ -67,26 +65,21 @@ function TagInput({
         ))}
         <input
           type="text"
-          className="flex-1 bg-transparent outline-none text-white min-w-[120px] text-sm"
+          className={styles.tagInput}
           placeholder={value.length === 0 ? placeholder : ""}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
         />
       </div>
-      {error && <span className="text-red-400 text-xs">{error}</span>}
-      <p className="text-xs text-gray-500">Press enter or comma to add</p>
+      {error && <span className={styles.error}>{error}</span>}
+      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Press enter or comma to add</p>
     </div>
   );
 }
 
 const DEFAULT_CONFIG: ProjectConfig = {
-  sources: {
-    reddit: null,
-    twitter: null,
-    ea_forum: null,
-    discord: null,
-  },
+  sources: [],
   keywords: { include: [], exclude: [] },
   classification: {
     categories: [],
@@ -98,6 +91,30 @@ const DEFAULT_CONFIG: ProjectConfig = {
     webhook_url: null,
   },
   team_contacts: [],
+};
+
+export const generateSlug = (name: string, ids: Set<string>) => {
+  const words = name
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-zA-Z]/g, "").toLowerCase())
+    .filter((w) => w.length > 0);
+
+  if (words.length === 0) return "";
+
+  let baseLetters = "";
+  if (words.length === 1) {
+    baseLetters = words[0].substring(0, 4);
+  } else {
+    baseLetters = words[0].substring(0, 2) + words[1].substring(0, 2);
+  }
+
+  let counter = 1;
+  let attempt = `${baseLetters}-${counter}`;
+  while (ids.has(attempt)) {
+    counter++;
+    attempt = `${baseLetters}-${counter}`;
+  }
+  return attempt;
 };
 
 export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps) {
@@ -112,6 +129,25 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
+  const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!isEditMode) {
+      fetch("/api/projects")
+        .then(res => res.json())
+        .then(data => {
+          if (data.projects) {
+            setExistingIds(new Set(data.projects.map((p: any) => p.id)));
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isEditMode]);
 
   const updateConfig = (path: string[], value: any) => {
     setConfig((prev) => {
@@ -126,17 +162,47 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
     });
   };
 
-  // Generate slug
   const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setDisplayName(name);
     if (!isEditMode) {
-      setId(
-        name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-      );
+      setId(generateSlug(name, existingIds));
+    }
+  };
+
+  // Re-run slug generation when existingIds load in case displayName is pre-filled
+  useEffect(() => {
+    if (!isEditMode && displayName) {
+      setId(generateSlug(displayName, existingIds));
+    }
+  }, [existingIds, isEditMode]); // displayName omitted intentionally to prevent overwrites except on existingIds load
+
+
+  const checkSlugCollision = async (baseSlug: string) => {
+    // If our live client state check missed it somehow (e.g. race condition),
+    // we double check against the live API right before POSTing.
+    try {
+      const res = await fetch("/api/projects");
+      if (!res.ok) return baseSlug;
+      const data = await res.json();
+      const ids = new Set(data.projects.map((p: any) => p.id));
+      
+      if (!ids.has(baseSlug)) return baseSlug;
+      
+      const parts = baseSlug.split('-');
+      const baseLetters = parts.length > 1 && !isNaN(parseInt(parts[parts.length-1]))
+        ? parts.slice(0, -1).join('-') 
+        : baseSlug;
+
+      let counter = 1;
+      let attempt = `${baseLetters}-${counter}`;
+      while (ids.has(attempt)) {
+        counter++;
+        attempt = `${baseLetters}-${counter}`;
+      }
+      return attempt;
+    } catch {
+      return baseSlug;
     }
   };
 
@@ -146,12 +212,69 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
     setSuccess("");
     setLoading(true);
 
+    const newErrors: Record<string, string> = {};
+    if (!displayName.trim()) {
+      newErrors["display_name"] = "Display Name is required.";
+    }
+    
+    let baseSlug = id;
+    if (!isEditMode) {
+      baseSlug = generateSlug(displayName, existingIds);
+      if (!baseSlug) {
+        newErrors["display_name"] = "Display Name must contain at least some letters.";
+      }
+    }
+
+    if (config.sources.length === 0) {
+      newErrors["sources"] = "At least one source is required.";
+    } else {
+      const invalidSources = config.sources.filter(s => !s.name.trim() || !s.url.trim());
+      if (invalidSources.length > 0) {
+        newErrors["sources"] = "All sources must have a valid name and URL.";
+      }
+    }
+
+    if (config.keywords.include.length === 0) {
+      newErrors["config.keywords.include"] = "At least one include keyword is required.";
+    }
+
+    if (config.classification.categories.length === 0) {
+      newErrors["config.classification.categories"] = "At least one category is required.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const url = isEditMode ? `/api/projects/${id}/config` : `/api/projects`;
+      let finalId = id;
+      if (!isEditMode) {
+        finalId = await checkSlugCollision(baseSlug);
+        setId(finalId); // Update state for potential re-renders or errors
+      }
+
+      const url = isEditMode ? `/api/projects/${finalId}/config` : `/api/projects`;
       const method = isEditMode ? "PUT" : "POST";
+      
+      let submitConfig = { ...config };
+      if (!isEditMode) {
+        submitConfig.classification = {
+          categories: config.classification.categories,
+          severity_thresholds: { high: 50, medium: 20 },
+        };
+        submitConfig.integrations = {
+          bug_tracker: null,
+          bug_tracker_project_key: null,
+          webhook_url: null,
+        };
+        submitConfig.team_contacts = [];
+      }
+
       const body = isEditMode
-        ? config
-        : { id, display_name: displayName, config };
+        ? submitConfig
+        : { id: finalId, display_name: displayName, config: submitConfig };
 
       const res = await fetch(url, {
         method,
@@ -182,87 +305,170 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
     }
   };
 
+  const handleDelete = async () => {
+    if (deleteConfirmText !== displayName && deleteConfirmText !== id) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    setErrors({});
+    
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "DELETE"
+      });
+      
+      if (res.ok) {
+        // Force Next.js router cache reset so Sidebar ProjectSwitcher re-fetches
+        router.refresh(); 
+        router.push("/settings");
+      } else {
+        const data = await res.json();
+        setErrors({ root: data.error || "Failed to delete project" });
+        setIsDeleting(false);
+        setShowDeleteModal(false);
+      }
+    } catch (err) {
+      setErrors({ root: "An unexpected error occurred during deletion" });
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 bg-gray-900 text-white p-6 rounded-xl border border-gray-700">
+    <form onSubmit={handleSubmit} className={styles.form}>
       
       {/* Project Meta */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-gray-700 pb-2">Project Info</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="font-medium text-sm text-gray-300">Display Name</label>
+      <section className={styles.card}>
+        <h2 className={styles.sectionTitle}>Project Info</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'start' }}>
+          <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
+            <label className={styles.label}>Display Name</label>
             <input
               type="text"
               required
-              disabled={isEditMode}
-              className="bg-gray-800 border border-gray-600 rounded-md p-2"
+              className={styles.input}
               value={displayName}
               onChange={handleDisplayNameChange}
             />
-            {errors["display_name"] && <span className="text-red-400 text-xs">{errors["display_name"]}</span>}
+            {errors["display_name"] && <span className={styles.error}>{errors["display_name"]}</span>}
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-medium text-sm text-gray-300">Project ID (Slug)</label>
-            <input
-              type="text"
-              required
-              disabled={isEditMode}
-              className="bg-gray-800 border border-gray-600 rounded-md p-2"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-            />
-            {errors["id"] && <span className="text-red-400 text-xs">{errors["id"]}</span>}
-          </div>
+          {isEditMode ? (
+            <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
+              <label className={styles.label}>Project ID (Slug)</label>
+              <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-card)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                {id}
+              </div>
+            </div>
+          ) : (
+            <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
+              <label className={styles.label}>Project ID (Slug)</label>
+              <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-card)', borderRadius: 'var(--border-radius)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                {id ? `Project ID: ${id}` : "Project ID: ..."}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
       {/* Sources */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-gray-700 pb-2">Sources (Optional)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <TagInput
-            label="Reddit (Subreddits)"
-            placeholder="e.g. anticheat, gamehacking"
-            value={config.sources.reddit?.subreddits || []}
-            error={errors["config.sources.reddit.subreddits"]}
-            onChange={(val) =>
-              updateConfig(["sources", "reddit"], val.length ? { subreddits: val } : null)
-            }
-          />
-          <TagInput
-            label="Twitter (Search Terms)"
-            placeholder="e.g. game cheat"
-            value={config.sources.twitter?.search_terms || []}
-            error={errors["config.sources.twitter.search_terms"]}
-            onChange={(val) =>
-              updateConfig(["sources", "twitter"], val.length ? { search_terms: val } : null)
-            }
-          />
-          <TagInput
-            label="EA Forum URLs"
-            placeholder="e.g. https://forum.ea.com/..."
-            value={config.sources.ea_forum?.urls || []}
-            error={errors["config.sources.ea_forum.urls"]}
-            onChange={(val) =>
-              updateConfig(["sources", "ea_forum"], val.length ? { urls: val } : null)
-            }
-          />
-          <TagInput
-            label="Discord Server IDs"
-            placeholder="e.g. 123456789"
-            value={config.sources.discord?.server_ids || []}
-            error={errors["config.sources.discord.server_ids"]}
-            onChange={(val) =>
-              updateConfig(["sources", "discord"], val.length ? { server_ids: val } : null)
-            }
-          />
+      <section className={styles.card}>
+        <h2 className={styles.sectionTitle}>Sources</h2>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "1rem" }}>
+          Add any forum, subreddit, or community page with a URL. WatchTower will monitor it for relevant posts.
+        </p>
+        {errors["sources"] && <div className={styles.error} style={{ marginBottom: "1rem" }}>{errors["sources"]}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {config.sources.map((source, index) => (
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '1rem', alignItems: 'end' }}>
+              <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
+                <label className={styles.label}>Name</label>
+                <input
+                  type="text"
+                  required
+                  className={styles.input}
+                  placeholder="e.g. Reddit r/Javelin"
+                  value={source.name}
+                  onChange={(e) => {
+                    const newSources = [...config.sources];
+                    newSources[index].name = e.target.value;
+                    updateConfig(["sources"], newSources);
+                  }}
+                />
+              </div>
+              <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
+                <label className={styles.label}>URL</label>
+                <input
+                  type="url"
+                  required
+                  className={styles.input}
+                  placeholder="https://..."
+                  value={source.url}
+                  onChange={(e) => {
+                    const newSources = [...config.sources];
+                    newSources[index].url = e.target.value;
+                    updateConfig(["sources"], newSources);
+                  }}
+                />
+              </div>
+              <SpecularButton
+                type="button"
+                size="sm"
+                radius={8}
+                tint="#ff6b6b"
+                tintOpacity={0.08}
+                lineColor="#ff9999"
+                baseColor="#aa4444"
+                intensity={0.9}
+                followMouse
+                proximity={100}
+                onClick={() => {
+                  const newSources = [...config.sources];
+                  newSources.splice(index, 1);
+                  updateConfig(["sources"], newSources);
+                }}
+              >
+                Remove
+              </SpecularButton>
+            </div>
+          ))}
+          <SpecularButton
+            type="button"
+            size="sm"
+            radius={8}
+            tint="#a0b4ff"
+            tintOpacity={0.08}
+            lineColor="#c0ccff"
+            baseColor="#525252"
+            intensity={0.9}
+            followMouse
+            proximity={120}
+            onClick={() => {
+              updateConfig(["sources"], [...config.sources, { name: "", url: "" }]);
+            }}
+          >
+            + Add Source
+          </SpecularButton>
         </div>
       </section>
 
-      {/* Keywords */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-gray-700 pb-2">Keywords</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Categories & Keywords */}
+      <section className={styles.card}>
+        <h2 className={styles.sectionTitle}>Categories & Keywords</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div>
+            <TagInput
+              label="Categories"
+              value={config.classification.categories}
+              error={errors["config.classification.categories"]}
+              onChange={(val) => updateConfig(["classification", "categories"], val)}
+            />
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginTop: "0.5rem" }}>
+              The types of issues or topics this project tracks. The AI uses this exact list when tagging incoming reports — it will not invent categories outside this list.
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           <TagInput
             label="Include Keywords"
             value={config.keywords.include}
@@ -278,112 +484,131 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
         </div>
       </section>
 
-      {/* Classification */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-gray-700 pb-2">Classification</h2>
-        <div className="space-y-4">
-          <TagInput
-            label="Categories"
-            value={config.classification.categories}
-            error={errors["config.classification.categories"]}
-            onChange={(val) => updateConfig(["classification", "categories"], val)}
-          />
-          <div className="grid grid-cols-2 gap-4 max-w-sm">
-            <div className="flex flex-col gap-1">
-              <label className="font-medium text-sm text-gray-300">High Severity Threshold</label>
-              <input
-                type="number"
-                min="0"
-                className="bg-gray-800 border border-gray-600 rounded-md p-2 text-white"
-                value={config.classification.severity_thresholds.high}
-                onChange={(e) => updateConfig(["classification", "severity_thresholds", "high"], parseInt(e.target.value))}
-              />
-              {errors["config.classification.severity_thresholds.high"] && <span className="text-red-400 text-xs">{errors["config.classification.severity_thresholds.high"]}</span>}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="font-medium text-sm text-gray-300">Medium Severity Threshold</label>
-              <input
-                type="number"
-                min="0"
-                className="bg-gray-800 border border-gray-600 rounded-md p-2 text-white"
-                value={config.classification.severity_thresholds.medium}
-                onChange={(e) => updateConfig(["classification", "severity_thresholds", "medium"], parseInt(e.target.value))}
-              />
-              {errors["config.classification.severity_thresholds.medium"] && <span className="text-red-400 text-xs">{errors["config.classification.severity_thresholds.medium"]}</span>}
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Integrations */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-gray-700 pb-2">Integrations (Optional)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="font-medium text-sm text-gray-300">Bug Tracker</label>
-            <input
-              type="text"
-              className="bg-gray-800 border border-gray-600 rounded-md p-2 text-white"
-              value={config.integrations.bug_tracker || ""}
-              onChange={(e) => updateConfig(["integrations", "bug_tracker"], e.target.value || null)}
-            />
-            {errors["config.integrations.bug_tracker"] && <span className="text-red-400 text-xs">{errors["config.integrations.bug_tracker"]}</span>}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-medium text-sm text-gray-300">Project Key</label>
-            <input
-              type="text"
-              className="bg-gray-800 border border-gray-600 rounded-md p-2 text-white"
-              value={config.integrations.bug_tracker_project_key || ""}
-              onChange={(e) => updateConfig(["integrations", "bug_tracker_project_key"], e.target.value || null)}
-            />
-            {errors["config.integrations.bug_tracker_project_key"] && <span className="text-red-400 text-xs">{errors["config.integrations.bug_tracker_project_key"]}</span>}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="font-medium text-sm text-gray-300">Webhook URL</label>
-            <input
-              type="url"
-              className="bg-gray-800 border border-gray-600 rounded-md p-2 text-white"
-              value={config.integrations.webhook_url || ""}
-              onChange={(e) => updateConfig(["integrations", "webhook_url"], e.target.value || null)}
-            />
-            {errors["config.integrations.webhook_url"] && <span className="text-red-400 text-xs">{errors["config.integrations.webhook_url"]}</span>}
-          </div>
-        </div>
-      </section>
-
-      {/* Team */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold border-b border-gray-700 pb-2">Team</h2>
-        <TagInput
-          label="Team Contacts (Emails)"
-          value={config.team_contacts}
-          error={errors["config.team_contacts"]}
-          onChange={(val) => updateConfig(["team_contacts"], val)}
-        />
-      </section>
 
       {errors.root && (
-        <div className="p-4 bg-red-900/50 border border-red-700 text-red-200 rounded">
+        <div className={styles.globalError}>
           {errors.root}
         </div>
       )}
 
       {success && (
-        <div className="p-4 bg-green-900/50 border border-green-700 text-green-200 rounded">
+        <div style={{ background: 'var(--status-fixed-bg)', color: 'var(--status-fixed)', padding: '1rem', borderRadius: 'var(--border-radius)', border: '1px solid var(--status-fixed)' }}>
           {success}
         </div>
       )}
 
-      <div className="flex justify-end border-t border-gray-700 pt-6">
-        <button
+      <div className={styles.buttonRow}>
+        <SpecularButton
+          type="button"
+          size="md"
+          radius={10}
+          tint="#a0b4ff"
+          tintOpacity={0.06}
+          lineColor="#c0ccff"
+          baseColor="#525252"
+          intensity={0.85}
+          followMouse
+          proximity={150}
+          onClick={() => router.back()}
+        >
+          Cancel
+        </SpecularButton>
+        <SpecularButton
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          size="md"
+          radius={10}
+          tint="#4C6FFF"
+          tintOpacity={0.2}
+          lineColor="#a0b4ff"
+          baseColor="#3a5acc"
+          intensity={1.2}
+          followMouse
+          proximity={180}
         >
           {loading ? "Saving..." : "Save Configuration"}
-        </button>
+        </SpecularButton>
       </div>
+
+      {isEditMode && (
+        <section className={styles.card} style={{ marginTop: '2rem', border: '1px solid var(--status-escalated)' }}>
+          <h2 className={styles.sectionTitle} style={{ color: 'var(--status-escalated)' }}>Danger Zone</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "1rem" }}>
+            Deleting a project is irreversible. All associated issue clusters, raw posts, and history will be permanently deleted.
+          </p>
+          <SpecularButton
+            type="button"
+            size="md"
+            radius={8}
+            tint="#ff6b6b"
+            tintOpacity={0.15}
+            lineColor="#ff9999"
+            baseColor="#aa4444"
+            intensity={1}
+            followMouse
+            proximity={100}
+            onClick={() => setShowDeleteModal(true)}
+          >
+            Delete Project
+          </SpecularButton>
+        </section>
+      )}
+
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999
+        }}>
+          <div className={styles.card} style={{ width: '100%', maxWidth: '400px', margin: '1rem', border: '1px solid var(--status-escalated)' }}>
+            <h2 className={styles.sectionTitle} style={{ color: 'var(--status-escalated)' }}>Delete Project?</h2>
+            <p style={{ color: "var(--text-main)", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+              This action is <strong>permanent</strong> and cannot be undone. To confirm, please type <strong>{displayName || id}</strong> below.
+            </p>
+            <input
+              type="text"
+              className={styles.input}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Project Name or ID"
+              style={{ marginBottom: '1.5rem', width: '100%' }}
+            />
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <SpecularButton
+                type="button"
+                size="md"
+                radius={8}
+                tint="#a0b4ff"
+                tintOpacity={0.06}
+                lineColor="#c0ccff"
+                baseColor="#525252"
+                intensity={0.85}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText("");
+                }}
+              >
+                Cancel
+              </SpecularButton>
+              <SpecularButton
+                type="button"
+                disabled={isDeleting || (deleteConfirmText !== displayName && deleteConfirmText !== id)}
+                size="md"
+                radius={8}
+                tint="#ff6b6b"
+                tintOpacity={0.2}
+                lineColor="#ff9999"
+                baseColor="#aa4444"
+                intensity={1}
+                onClick={handleDelete}
+              >
+                {isDeleting ? "Deleting..." : "Confirm Delete"}
+              </SpecularButton>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -4,16 +4,27 @@ import { ProjectConfigSchema } from "../lib/schemas";
 import { classifyAndMatchPost, generateClusterSummary } from "../lib/llm";
 import { updateClusterSeverity } from "./severity";
 
+export interface ClusterResult {
+  postsProcessed: number;
+  newClusters: number;
+  matched: number;
+  skipped: number;
+  stoppedEarly: boolean;
+}
+
 const BATCH_SIZE = 20;
 
-export async function runClustering(targetProjectId: string | null = null) {
+export async function runClustering(targetProjectId: string | null = null): Promise<ClusterResult> {
+  const startTime = Date.now();
+  const MAX_DURATION_MS = 45000;
+  let stoppedEarly = false;
   const projects = await prisma.project.findMany({
     where: targetProjectId ? { id: targetProjectId } : undefined,
   });
 
   if (projects.length === 0) {
     console.log(`No projects found${targetProjectId ? ` matching ID: ${targetProjectId}` : ""}.`);
-    return;
+    return { postsProcessed: 0, newClusters: 0, matched: 0, skipped: 0, stoppedEarly: false };
   }
 
   let totalPostsProcessed = 0;
@@ -22,6 +33,12 @@ export async function runClustering(targetProjectId: string | null = null) {
   let totalSkipped = 0;
 
   for (const project of projects) {
+    if (Date.now() - startTime > MAX_DURATION_MS) {
+      console.log(`[Cluster] Stopping early - reached time limit of ${MAX_DURATION_MS}ms. More work remains for next run.`);
+      stoppedEarly = true;
+      break;
+    }
+
     console.log(`\n======================================`);
     console.log(`Clustering for Project: ${project.id}`);
     console.log(`======================================`);
@@ -36,6 +53,12 @@ export async function runClustering(targetProjectId: string | null = null) {
     const failedPostIds = new Set<string>();
 
     while (true) {
+      if (Date.now() - startTime > MAX_DURATION_MS) {
+        console.log(`[Cluster] Stopping early - reached time limit of ${MAX_DURATION_MS}ms. More work remains for next run.`);
+        stoppedEarly = true;
+        break;
+      }
+
       // Fetch a batch of unclustered posts
       const unclusteredPosts = await prisma.rawPost.findMany({
         where: {
@@ -182,6 +205,10 @@ export async function runClustering(targetProjectId: string | null = null) {
       // small delay between batches
       await new Promise(res => setTimeout(res, 1000));
     }
+    
+    if (stoppedEarly) {
+      break;
+    }
   }
 
   console.log(`\n======================================`);
@@ -191,6 +218,14 @@ export async function runClustering(targetProjectId: string | null = null) {
   console.log(`Total New Clusters: ${totalNewClusters}`);
   console.log(`Total Matched: ${totalMatched}`);
   console.log(`Total Skipped: ${totalSkipped}`);
+
+  return {
+    postsProcessed: totalPostsProcessed,
+    newClusters: totalNewClusters,
+    matched: totalMatched,
+    skipped: totalSkipped,
+    stoppedEarly,
+  };
 }
 
 if (require.main === module || process.argv[1]?.endsWith('cluster.ts')) {

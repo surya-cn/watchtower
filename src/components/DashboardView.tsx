@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "../lib/apiClient";
-import ProjectSwitcher from "./ProjectSwitcher";
 import MetricCardsRow, { MetricData } from "./MetricCardsRow";
 import IssuesTable from "./IssuesTable";
 import TrendChart from "./TrendChart";
@@ -46,12 +45,10 @@ export default function DashboardView() {
   }, [projectId]);
 
   const categories = metrics?.category_breakdown.map(b => b.category) || [];
-  const hasZeroIssuesEver = metrics?.open_issues === 0 && metrics?.category_breakdown.length === 0;
+  const hasZeroIssuesEver = metrics?.open_issues_count === 0 && metrics?.category_breakdown.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      <ProjectSwitcher />
-      
       {projectId ? (
         <div style={{ padding: "1.5rem" }}>
           <AIChatBar projectId={projectId} onOpenIssue={(id) => setSelectedIssueId(id)} />

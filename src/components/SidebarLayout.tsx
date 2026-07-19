@@ -6,11 +6,20 @@ import Sidebar from "./Sidebar";
 import TextType from "@/components/TextType/TextType";
 import styles from "./SidebarLayout.module.css";
 
-export default function SidebarLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  
+function ActiveProjectIndicator() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get("project");
+  
+  if (!projectId) return null;
+  return (
+    <span className={styles.activeProjectText}>
+      Project: {projectId}
+    </span>
+  );
+}
+
+export default function SidebarLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
 
   if (pathname === "/login") {
     return <>{children}</>;
@@ -34,11 +43,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
              showCursor={true}
              cursorCharacter="|"
            />
-           {projectId && (
-             <span className={styles.activeProjectText}>
-               Project: {projectId}
-             </span>
-           )}
+           <Suspense fallback={null}>
+             <ActiveProjectIndicator />
+           </Suspense>
          </header>
          <div className={styles.pageContent}>
            {children}

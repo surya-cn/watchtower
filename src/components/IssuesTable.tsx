@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./IssuesTable.module.css";
 import SpecularButton from "./SpecularButton/SpecularButton";
 import { apiClient } from "../lib/apiClient";
-import IssueDetailSlideOver from "./IssueDetailSlideOver";
 
 interface Issue {
   id: string;
@@ -36,9 +35,10 @@ interface Props {
   parentLoading: boolean;
   selectedIssueId: string | null;
   setSelectedIssueId: (id: string | null) => void;
+  refreshTrigger?: number;
 }
 
-export default function IssuesTable({ projectId, availableCategories, isCompletelyEmpty, parentLoading, selectedIssueId, setSelectedIssueId }: Props) {
+export default function IssuesTable({ projectId, availableCategories, isCompletelyEmpty, parentLoading, selectedIssueId, setSelectedIssueId, refreshTrigger }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -95,7 +95,7 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
 
   useEffect(() => {
     fetchIssues();
-  }, [fetchIssues]);
+  }, [fetchIssues, refreshTrigger]);
 
   const updateFilter = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams.toString());
@@ -369,15 +369,6 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
             </SpecularButton>
           </div>
         </div>
-      )}
-
-      {selectedIssueId && (
-        <IssueDetailSlideOver 
-          issueId={selectedIssueId} 
-          projectId={projectId}
-          onClose={() => setSelectedIssueId(null)}
-          onUpdate={() => fetchIssues()}
-        />
       )}
     </div>
   );

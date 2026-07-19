@@ -7,6 +7,7 @@ import MetricCardsRow, { MetricData } from "./MetricCardsRow";
 import IssuesTable from "./IssuesTable";
 import TrendChart from "./TrendChart";
 import AIChatBar from "./AIChatBar";
+import IssueDetailSlideOver from "./IssueDetailSlideOver";
 
 export default function DashboardView() {
   const searchParams = useSearchParams();
@@ -15,6 +16,7 @@ export default function DashboardView() {
   const [metrics, setMetrics] = useState<MetricData | null>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (!projectId) return;
@@ -61,7 +63,16 @@ export default function DashboardView() {
             parentLoading={loadingMetrics}
             selectedIssueId={selectedIssueId}
             setSelectedIssueId={setSelectedIssueId}
+            refreshTrigger={refreshTrigger}
           />
+          {selectedIssueId && (
+            <IssueDetailSlideOver 
+              issueId={selectedIssueId} 
+              projectId={projectId}
+              onClose={() => setSelectedIssueId(null)}
+              onUpdate={() => setRefreshTrigger(prev => prev + 1)}
+            />
+          )}
         </div>
       ) : (
         <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)" }}>

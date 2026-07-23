@@ -172,7 +172,17 @@ Rules:
             if (args.status) where.status = { in: args.status.split(",") };
             if (args.severity) where.impact_severity = { in: args.severity.split(",").map((s:string)=>s.trim().toLowerCase()) };
             if (args.category) where.category = args.category;
-            if (args.search) where.title = { contains: args.search, mode: "insensitive" };
+            if (args.search) {
+              const terms = args.search.split(" ").filter((t: string) => t.trim().length > 0);
+              if (terms.length > 0) {
+                where.AND = terms.map((term: string) => ({
+                  OR: [
+                    { title: { contains: term, mode: "insensitive" } },
+                    { summary: { contains: term, mode: "insensitive" } },
+                  ]
+                }));
+              }
+            }
             
             const issues = await prisma.issueCluster.findMany({
               where,

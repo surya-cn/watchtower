@@ -103,13 +103,14 @@ export async function runIngest(targetProjectId: string | null = null, maxDurati
           continue;
         }
 
-        const includes = config.keywords.include.map((k) => k.toLowerCase());
-        const excludes = config.keywords.exclude.map((k) => k.toLowerCase());
+        const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const includesRegex = config.keywords.include.map((k) => new RegExp(`\\b${escapeRegExp(k)}\\b`, 'i'));
+        const excludesRegex = config.keywords.exclude.map((k) => new RegExp(`\\b${escapeRegExp(k)}\\b`, 'i'));
 
         const filteredPosts = fetchedPosts.filter((post) => {
-          const content = post.content.toLowerCase();
-          const hasInclude = includes.length === 0 || includes.some((k) => content.includes(k));
-          const hasExclude = excludes.some((k) => content.includes(k));
+          const content = post.content; // Regex 'i' flag handles case
+          const hasInclude = includesRegex.length === 0 || includesRegex.some((r) => r.test(content));
+          const hasExclude = excludesRegex.some((r) => r.test(content));
           return hasInclude && !hasExclude;
         });
 

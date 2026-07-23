@@ -89,11 +89,8 @@ export async function fetchSteamDiscussions(
       }
 
       const replyCountText = $el.find('.forum_topic_reply_count').text().replace(/\s+/g, ' ').trim();
-      let content = title;
-      if (replyCountText) {
-        content += `\n\nReplies: ${replyCountText}`;
-      }
-
+      const replyCount = parseInt(replyCountText, 10) || 0;
+      
       const author = $el.find('.forum_topic_op').text().replace(/\s+/g, ' ').trim() || "Unknown";
       
       let sourcePostId = threadUrl;
@@ -102,13 +99,63 @@ export async function fetchSteamDiscussions(
         sourcePostId = match[1];
       }
 
+      // Add original topic
       allPosts.push({
         source_post_id: sourcePostId,
         author,
-        content,
+        content: title,
         url: threadUrl,
-        posted_at: postedAt
+        posted_at: postedAt // OP posted time might be different but we only have lastpost time from the index easily, this is close enough for OP sorting unless we fetch it. We will use lastpost for the whole thread.
       });
+
+      // Fetch comments if there are replies
+      if (replyCount > 0) {
+        console.log(`  -> Fetching ${replyCount} replies for thread: ${title.substring(0, 30)}...`);
+        await delay(1000);
+        
+        try {
+          const threadRes = await fetch(threadUrl, {
+            headers: {
+              "User-Agent": "WatchTower/1.0",
+              "Accept-Language": "en-US,en;q=0.9"
+            }
+          });
+          if (threadRes.ok) {
+            const threadHtml = await threadRes.text();
+            const $$ = cheerio.load(threadHtml);
+            
+            $$('.commentthread_comment').each((j, c) => {
+              const commentAuthor = $$(c).find('.commentthread_author_link').text().trim() || "Unknown Reply Author";
+              const commentText = $$(c).find('.commentthread_comment_text').text().trim();
+              const commentTimestampRaw = $$(c).find('.commentthread_comment_timestamp').attr('data-timestamp');
+              
+              if (!commentText) return;
+
+              let commentPostedAt = postedAt;
+              if (commentTimestampRaw) {
+                commentPostedAt = new Date(parseInt(commentTimestampRaw, 10) * 1000);
+              }
+
+              // Create a unique post ID for the comment
+              const commentId = $$(c).attr('id') || `comment_${j}`;
+              const commentSourcePostId = `${sourcePostId}_${commentId}`;
+              
+              // We use only the comment text so it is strictly filtered by keywords
+              const fullCommentText = commentText;
+
+              allPosts.push({
+                source_post_id: commentSourcePostId,
+                author: commentAuthor,
+                content: fullCommentText,
+                url: threadUrl,
+                posted_at: commentPostedAt
+              });
+            });
+          }
+        } catch (err: any) {
+          console.warn(`[Steam Connector] Failed to fetch comments for thread ${threadUrl}: ${err.message}`);
+        }
+      }
     }
 
     if (reachedOlderThanSince) {

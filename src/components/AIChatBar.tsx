@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import styles from "./AIChatBar.module.css";
 import Button from '@/components/Button/Button';
 import { apiClient } from "../lib/apiClient";
@@ -56,12 +57,12 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
         })
       });
 
-      const { type, data, natural_language_response } = response;
+      const { type, ui_action, natural_language_response } = response;
 
       let assistantContent = natural_language_response || "";
 
-      if (type === "issues") {
-        // Apply filters to URL
+      if (ui_action?.type === "filters") {
+        const data = ui_action.data;
         const params = new URLSearchParams(searchParams.toString());
         if (data.status) params.set("status", data.status);
         else params.delete("status");
@@ -71,10 +72,6 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
         else params.delete("category");
         
         router.push(`/?${params.toString()}`, { scroll: false });
-        assistantContent = "I've applied those filters to the dashboard.";
-      } else if (type === "detail") {
-        onOpenIssue(data.id);
-        assistantContent = "Here are the details for that issue.";
       }
       
       setMessages((prev) => [...prev, { role: "assistant", content: assistantContent }]);
@@ -97,7 +94,34 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
                 {msg.role === "assistant" && (
                   <img src="/lighthouse.png" alt="WatchTower" style={{ width: '16px', height: '16px', marginRight: '8px', verticalAlign: 'text-bottom' }} />
                 )}
-                {msg.content}
+                {msg.role === "user" ? (
+                  msg.content
+                ) : (
+                  <ReactMarkdown
+                    components={{
+                      a: ({ node, href, children, ...props }) => {
+                        if (href?.startsWith("#issue-")) {
+                          return (
+                            <a
+                              {...props}
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                onOpenIssue(href.replace("#issue-", ""));
+                              }}
+                              style={{ color: "#3B82F6", textDecoration: "underline", cursor: "pointer" }}
+                            >
+                              {children}
+                            </a>
+                          );
+                        }
+                        return <a href={href} {...props}>{children}</a>;
+                      },
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                )}
               </div>
             </div>
           ))}

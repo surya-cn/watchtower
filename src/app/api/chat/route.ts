@@ -2,20 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProjectIdOrError, notFound, serverError } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { client } from "@/lib/llm";
-import { GET as getIssues } from "@/app/api/issues/route";
-import { GET as getMetricsSummary } from "@/app/api/metrics/summary/route";
-import { GET as getMetricsTrend } from "@/app/api/metrics/trend/route";
+import { ProjectConfig } from "@/lib/schemas";
 
-const FALLBACK_MESSAGE = "I can help you search, filter, or summarize issues for [project name] — try asking about severity, category, status, or recent trends.";
+const FALLBACK_MESSAGE = "I am an AI co-pilot designed to help you analyze issues and manage your WatchTower projects. I cannot answer unrelated questions.";
 
-// TODO (Phase 7+): Add per-project permission check here using project_access table for non-admin users.
 export async function POST(req: NextRequest) {
   try {
     const projectIdOrError = getProjectIdOrError(req.headers);
     if (typeof projectIdOrError !== "string") return projectIdOrError;
     const projectId = projectIdOrError;
 
-    // Verify project exists
     const project = await prisma.project.findUnique({
       where: { id: projectId },
     });
@@ -30,287 +26,229 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    // 1. Lightweight Pre-check
-    const msgLower = message.toLowerCase();
-    const hasAllowedKeyword = ["issue", "bug", "crash", "hack", "cheat", "status", "severity", "category", "trend", "metric", "report", "open", "closed", "active", "resolved", "fixed", "summary", "summarize", "search", "filter", "find"].some(kw => msgLower.includes(kw));
-    const isObviousOffTopic = ["weather", "time", "poem", "recipe", "who are you", "hello", "hi", "write a", "ignore"].some(kw => msgLower.includes(kw));
+    // 1. Prepare conversation history
+    const safeHistory = Array.isArray(conversation_history) ? conversation_history.slice(-10) : [];
     
-    if (!hasAllowedKeyword && isObviousOffTopic) {
-      return NextResponse.json({ type: "fallback", natural_language_response: FALLBACK_MESSAGE.replace("[project name]", project.display_name) });
-    }
-
-    // 2. Prepare conversation history
-    const safeHistory = Array.isArray(conversation_history) ? conversation_history.slice(-6) : [];
-    
-    const messages: any[] = [
+    let messages: any[] = [
       {
         role: "system",
-        content: `You are an AI assistant for WatchTower. Your ONLY job is to search, filter, and summarize issue data for the current project using the provided tools.
-You must NOT answer general knowledge questions, write code, or engage in hypothetical roleplay.
-If a user asks something outside the scope of anticheat issue tracking, or if you cannot fulfill the request using a tool, you must respond with a standard fallback message or without calling any tools.
-Do NOT attempt to guess issue details. Always use tools.
-When returning tool arguments, do NOT include extra parameters like project_id or project_name.`
+        content: `You are an AI Data Analyst and Project Co-Pilot for WatchTower. Your goal is to analyze player feedback, manage project settings, and provide deep insights.
+You have access to the following project context:
+- Project ID: ${project.id}
+- Project Name: ${project.display_name}
+- Current Config: ${JSON.stringify(project.config)}
+
+Rules:
+1. When asked to analyze issues, use the query_database tool to fetch raw data. Do NOT invent data. Look for root causes, player sentiment, and summarize effectively.
+2. When asked to add keywords, categories, or sources, check the Current Config. If the user's input is missing info (like the Steam App ID or Reddit URL), ask them clarifying questions. Prevent duplicate keywords/categories.
+3. You can create entirely new projects if the user asks.
+4. IMPORTANT: You must NOT answer general knowledge questions, write code, or engage in hypothetical roleplay outside the scope of WatchTower issue tracking. If the user asks an unrelated question, politely refuse and remind them of your purpose.`
       },
       ...safeHistory.map((m: any) => ({ role: m.role, content: m.content })),
       { role: "user", content: message }
     ];
 
-    // 3. Call OpenRouter
-    const msg = await client.chat.completions.create({
-      model: "google/gemini-2.5-flash",
-      max_tokens: 1024,
-      messages,
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "filter_issues",
-            description: "Filters issues based on criteria and returns the matching list.",
-            parameters: {
-              type: "object",
-              properties: {
-                status: { type: "string" },
-                severity: { type: "string" },
-                category: { type: "string" },
-                search: { type: "string" },
-                sort_by: { type: "string", enum: ["newest", "oldest", "severity", "priority"] }
-              }
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "query_database",
+          description: "Fetches real issues from the database for analysis.",
+          parameters: {
+            type: "object",
+            properties: {
+              status: { type: "string", description: "Comma separated statuses (e.g. new,active,resolved)" },
+              severity: { type: "string", description: "low, medium, high" },
+              category: { type: "string" },
+              search: { type: "string", description: "Search term" },
+              limit: { type: "number", description: "Max issues to return (default 20, max 50)" }
             }
-          }
-        },
-        {
-          type: "function",
-          function: {
-            name: "summarize_issues",
-            description: "Fetches matching issues and generates a short natural-language summary.",
-            parameters: {
-              type: "object",
-              properties: {
-                status: { type: "string" },
-                severity: { type: "string" },
-                category: { type: "string" },
-                date_range: { type: "string", enum: ["today", "this_week", "this_month"] }
-              }
-            }
-          }
-        },
-        {
-          type: "function",
-          function: {
-            name: "get_issue_detail",
-            description: "Gets the full detail of a specific issue by title or ID.",
-            parameters: {
-              type: "object",
-              properties: {
-                issue_id_or_title: { type: "string" }
-              },
-              required: ["issue_id_or_title"]
-            }
-          }
-        },
-        {
-          type: "function",
-          function: {
-            name: "get_project_metrics",
-            description: "Gets overall project metrics including summaries and trends.",
-            parameters: { type: "object", properties: {} }
           }
         }
-      ],
-      tool_choice: "auto"
-    });
-
-    const responseMessage = msg.choices[0].message;
-
-    // 4. Handle tool calls or fallback
-    if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
-      // Discard free-form text, fallback
-      return NextResponse.json({ type: "fallback", natural_language_response: FALLBACK_MESSAGE.replace("[project name]", project.display_name) });
-    }
-
-    const toolCall = responseMessage.tool_calls[0] as any;
-    const functionName = toolCall.function.name;
-    let args: any = {};
-    try {
-      args = JSON.parse(toolCall.function.arguments);
-    } catch (e) {
-      console.error("Invalid JSON in tool arguments", e);
-    }
-
-    // Validate Enums
-    const VALID_STATUSES = ["new", "active", "escalated", "fixed", "closed_false_positive", "resolved"];
-    const VALID_SEVERITIES = ["low", "medium", "high"];
-
-    let warningNotes = [];
-    let mappedStatus = args.status;
-    
-    if (args.status) {
-      if (args.status.toLowerCase() === "open") {
-        mappedStatus = "new,active,escalated";
-      } else {
-        const statuses = args.status.split(",").map((s: string) => s.trim().toLowerCase());
-        const invalidStatuses = statuses.filter((s: string) => !VALID_STATUSES.includes(s));
-        if (invalidStatuses.length > 0) {
-          warningNotes.push(`I didn't recognize the status '${invalidStatuses.join(", ")}' so I excluded it from the filter.`);
-          const validStatuses = statuses.filter((s: string) => VALID_STATUSES.includes(s));
-          mappedStatus = validStatuses.length > 0 ? validStatuses.join(",") : undefined;
+      },
+      {
+        type: "function",
+        function: {
+          name: "update_project_config",
+          description: "Updates keywords or categories for the current project. ONLY provide the arrays you wish to overwrite.",
+          parameters: {
+            type: "object",
+            properties: {
+              include_keywords: { type: "array", items: { type: "string" } },
+              exclude_keywords: { type: "array", items: { type: "string" } },
+              categories: { type: "array", items: { type: "string" } }
+            }
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "add_source",
+          description: "Adds a new data source to the project.",
+          parameters: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["steam", "reddit", "custom"] },
+              url: { type: "string", description: "The full URL or App ID" }
+            },
+            required: ["type", "url"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_project",
+          description: "Creates a brand new project.",
+          parameters: {
+            type: "object",
+            properties: {
+              display_name: { type: "string" },
+              slug: { type: "string", description: "URL-friendly short string" }
+            },
+            required: ["display_name", "slug"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "apply_dashboard_filters",
+          description: "Visually updates the user's dashboard to apply these filters.",
+          parameters: {
+            type: "object",
+            properties: {
+              status: { type: "string" },
+              severity: { type: "string" },
+              category: { type: "string" }
+            }
+          }
         }
       }
-    }
+    ];
 
-    let mappedSeverity = args.severity;
-    if (args.severity) {
-      const severities = args.severity.split(",").map((s: string) => s.trim().toLowerCase());
-      const invalidSeverities = severities.filter((s: string) => !VALID_SEVERITIES.includes(s));
-      if (invalidSeverities.length > 0) {
-         warningNotes.push(`I didn't recognize the severity '${invalidSeverities.join(", ")}' so I excluded it from the filter.`);
-         const validSeverities = severities.filter((s: string) => VALID_SEVERITIES.includes(s));
-         mappedSeverity = validSeverities.length > 0 ? validSeverities.join(",") : undefined;
-      }
-    }
+    let uiAction: any = null;
+    let iteration = 0;
+    const maxIterations = 5;
 
-    // Process based on function name
-    if (functionName === "filter_issues") {
-      const sanitizedArgs = {
-        status: mappedStatus,
-        severity: mappedSeverity,
-        category: args.category,
-        search: args.search,
-        sort_by: args.sort_by
-      };
+    while (iteration < maxIterations) {
+      iteration++;
       
-      const responsePayload: any = { type: "issues", data: sanitizedArgs };
-      if (warningNotes.length > 0) {
-        responsePayload.natural_language_response = warningNotes.join(" ");
-      }
-      return NextResponse.json(responsePayload);
-    }
-
-    if (functionName === "get_issue_detail") {
-      const query = args.issue_id_or_title;
-      if (!query) return NextResponse.json({ type: "fallback", natural_language_response: FALLBACK_MESSAGE.replace("[project name]", project.display_name) });
-      
-      // Try exact ID match first
-      const exactMatch = await prisma.issueCluster.findFirst({ where: { id: query, project_id: projectId } });
-      if (exactMatch) {
-        return NextResponse.json({ type: "detail", data: { id: exactMatch.id } });
-      }
-
-      // Try substring title match
-      const candidates = await prisma.issueCluster.findMany({
-        where: {
-          project_id: projectId,
-          title: {
-            contains: query,
-            mode: "insensitive"
-          }
-        },
-        select: { id: true, title: true }
+      const msg = await client.chat.completions.create({
+        model: "google/gemini-2.5-flash",
+        max_tokens: 2048,
+        messages,
+        tools: tools as any,
+        tool_choice: "auto"
       });
 
-      if (candidates.length === 1) {
-        return NextResponse.json({ type: "detail", data: { id: candidates[0].id } });
-      } else if (candidates.length > 1) {
-        const titles = candidates.map(c => `"${c.title}"`).join(", ");
+      const responseMessage = msg.choices[0].message;
+      
+      if (!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) {
+        // Final text response
         return NextResponse.json({
-          type: "fallback",
-          natural_language_response: `I found multiple issues matching that description (${titles}). Could you be more specific?`
-        });
-      } else {
-        return NextResponse.json({
-          type: "fallback",
-          natural_language_response: `I couldn't find any issue matching "${query}" in this project.`
+          type: "chat",
+          ui_action: uiAction,
+          natural_language_response: responseMessage.content || FALLBACK_MESSAGE
         });
       }
-    }
 
-    if (functionName === "summarize_issues") {
-      const sanitizedArgs: any = {
-        status: mappedStatus,
-        severity: mappedSeverity,
-        category: args.category
-      };
-      
-      // We will make a local request to our own API.
-      const url = new URL(`http://localhost/api/issues?project=${projectId}`);
-      if (sanitizedArgs.status) url.searchParams.set("status", sanitizedArgs.status);
-      if (sanitizedArgs.severity) url.searchParams.set("severity", sanitizedArgs.severity);
-      if (sanitizedArgs.category) url.searchParams.set("category", sanitizedArgs.category);
-      
-      const mockReq = new NextRequest(url);
-      mockReq.headers.set("X-Project-Id", projectId);
-      
-      const res = await getIssues(mockReq);
-      const json = await res.json();
-      
-      if (!json.data || json.data.length === 0) {
-        let emptyMsg = "I couldn't find any issues matching those filters.";
-        if (sanitizedArgs.category) {
-          const allowedCategories = (project.config as any)?.classification?.categories || [];
-          if (allowedCategories.length > 0 && !allowedCategories.includes(sanitizedArgs.category)) {
-            emptyMsg = `I couldn't find any issues for category "${sanitizedArgs.category}". Valid categories are: ${allowedCategories.join(', ')}.`;
+      // Add assistant tool_calls message to history
+      messages.push(responseMessage);
+
+      // Execute tools
+      for (const toolCall of responseMessage.tool_calls as any[]) {
+        const fnName = toolCall.function.name;
+        let args: any = {};
+        try { args = JSON.parse(toolCall.function.arguments); } catch(e) {}
+        
+        let toolResult = "";
+
+        try {
+          if (fnName === "query_database") {
+            const where: any = { project_id: projectId };
+            if (args.status) where.status = { in: args.status.split(",") };
+            if (args.severity) where.impact_severity = { in: args.severity.split(",").map((s:string)=>s.toUpperCase()) };
+            if (args.category) where.category = args.category;
+            if (args.search) where.title = { contains: args.search, mode: "insensitive" };
+            
+            const issues = await prisma.issueCluster.findMany({
+              where,
+              take: args.limit || 20,
+              orderBy: { updated_at: 'desc' },
+              select: { id: true, title: true, summary: true, category: true, status: true, impact_severity: true, severity: true, post_count: true }
+            });
+            toolResult = JSON.stringify(issues);
+          } 
+          else if (fnName === "update_project_config") {
+            const currentConfig = project.config as ProjectConfig;
+            if (args.include_keywords) currentConfig.keywords.include = Array.from(new Set(args.include_keywords));
+            if (args.exclude_keywords) currentConfig.keywords.exclude = Array.from(new Set(args.exclude_keywords));
+            if (args.categories) {
+              currentConfig.classification = currentConfig.classification || { categories: [] };
+              currentConfig.classification.categories = Array.from(new Set(args.categories));
+            }
+            
+            await prisma.project.update({
+              where: { id: projectId },
+              data: { config: currentConfig as any }
+            });
+            // Update local object for next steps
+            project.config = currentConfig as any;
+            toolResult = "Config updated successfully.";
           }
+          else if (fnName === "add_source") {
+            const currentConfig = project.config as ProjectConfig;
+            currentConfig.sources.push({ type: args.type as any, url: args.url });
+            await prisma.project.update({
+              where: { id: projectId },
+              data: { config: currentConfig as any }
+            });
+            project.config = currentConfig as any;
+            toolResult = "Source added successfully.";
+          }
+          else if (fnName === "create_project") {
+            const newProject = await prisma.project.create({
+              data: {
+                id: args.slug,
+                display_name: args.display_name,
+                config: {
+                  keywords: { include: [], exclude: [] },
+                  sources: [],
+                  classification: { categories: [] }
+                }
+              }
+            });
+            toolResult = `Project created successfully. ID: ${newProject.id}`;
+          }
+          else if (fnName === "apply_dashboard_filters") {
+            uiAction = { type: "filters", data: args };
+            toolResult = "Filters applied to UI.";
+          }
+          else {
+            toolResult = "Unknown tool";
+          }
+        } catch (err: any) {
+          toolResult = `Error executing tool: ${err.message}`;
         }
-        return NextResponse.json({ type: "fallback", natural_language_response: emptyMsg });
-      }
-      
-      let summaryText = "Unable to generate summary — showing raw data";
-      try {
-        const summaryMsg = await client.chat.completions.create({
-          model: "google/gemini-2.5-flash",
-          max_tokens: 512,
-          messages: [
-            { role: "system", content: "You are a concise assistant. Summarize the provided issue data in 2-3 sentences. Focus on trends and key numbers." },
-            { role: "user", content: `Here is the issue data:n${JSON.stringify(json.data)}` }
-          ]
+
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: toolResult
         });
-        if (summaryMsg.choices[0].message.content) {
-          summaryText = summaryMsg.choices[0].message.content;
-        }
-      } catch (err) {
-        console.error("Second LLM call failed", err);
       }
-      
-      return NextResponse.json({ type: "summary", data: sanitizedArgs, natural_language_response: summaryText });
     }
 
-    if (functionName === "get_project_metrics") {
-      const mockReq = new NextRequest(new URL(`http://localhost/api/metrics/summary`));
-      mockReq.headers.set("X-Project-Id", projectId);
-      const summaryRes = await getMetricsSummary(mockReq);
-      const summaryJson = await summaryRes.json();
-
-      const mockReq2 = new NextRequest(new URL(`http://localhost/api/metrics/trend?period=7d`));
-      mockReq2.headers.set("X-Project-Id", projectId);
-      const trendRes = await getMetricsTrend(mockReq2);
-      const trendJson = await trendRes.json();
-
-      let summaryText = "Unable to generate summary — showing raw data";
-      try {
-        const summaryMsg = await client.chat.completions.create({
-          model: "google/gemini-2.5-flash",
-          max_tokens: 512,
-          messages: [
-            { role: "system", content: "You are a concise assistant. Summarize the provided project metrics in 2-3 sentences. Note any significant changes or active issue counts." },
-            { role: "user", content: `Summary Data:n${JSON.stringify(summaryJson)}nTrend Data:n${JSON.stringify(trendJson)}` }
-          ]
-        });
-        if (summaryMsg.choices[0].message.content) {
-          summaryText = summaryMsg.choices[0].message.content;
-        }
-      } catch (err) {
-        console.error("Second LLM call failed", err);
-      }
-      
-      return NextResponse.json({ type: "metrics", natural_language_response: summaryText });
-    }
-
-    // Default fallback if function name is unrecognized
-    return NextResponse.json({ type: "fallback", natural_language_response: FALLBACK_MESSAGE.replace("[project name]", project.display_name) });
+    return NextResponse.json({
+      type: "chat",
+      ui_action: uiAction,
+      natural_language_response: "I needed too many steps to answer this."
+    });
 
   } catch (error: any) {
     console.error("Chat API error:", error);
     return serverError("Failed to process chat request");
   }
 }
-

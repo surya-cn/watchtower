@@ -164,7 +164,16 @@ Rules:
       for (const toolCall of responseMessage.tool_calls as any[]) {
         const fnName = toolCall.function.name;
         let args: any = {};
-        try { args = JSON.parse(toolCall.function.arguments); } catch(e) {}
+        try { 
+          let rawArgs = toolCall.function.arguments;
+          // Strip potential markdown code blocks
+          if (rawArgs.startsWith('```json')) {
+            rawArgs = rawArgs.replace(/```json\\n?/, '').replace(/```$/, '');
+          }
+          args = JSON.parse(rawArgs); 
+        } catch(e) {
+          console.error("Failed to parse tool arguments:", toolCall.function.arguments);
+        }
         
         let toolResult = "";
 

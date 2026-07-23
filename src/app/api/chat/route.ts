@@ -200,7 +200,7 @@ Rules:
           }
           else if (fnName === "add_source") {
             const currentConfig = project.config as ProjectConfig;
-            currentConfig.sources.push({ type: args.type as any, url: args.url });
+            currentConfig.sources.push({ name: args.type as string, url: args.url });
             await prisma.project.update({
               where: { id: projectId },
               data: { config: currentConfig as any }

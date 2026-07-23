@@ -31,18 +31,24 @@ export default function DashboardView() {
         const data = await apiClient<MetricData>("/api/metrics/summary", projectId!);
         if (isMounted) {
           setMetrics(data);
+          setLoadingMetrics(false);
         }
       } catch (err) {
         console.error("Failed to fetch metrics", err);
-      } finally {
         if (isMounted) setLoadingMetrics(false);
       }
     }
 
     fetchMetrics();
 
+    const intervalId = setInterval(() => {
+      fetchMetrics();
+      setRefreshTrigger(prev => prev + 1);
+    }, 60000); // 60 seconds
+
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
     };
   }, [projectId]);
 

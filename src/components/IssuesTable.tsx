@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./IssuesTable.module.css";
 import Button from '@/components/Button/Button';
@@ -80,14 +80,14 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
     return () => clearTimeout(timer);
   }, [searchQuery, urlSearch, searchParams, router]);
 
-  const fetchIssues = useCallback(async () => {
+  const fetchIssues = useCallback(async (silent = false) => {
     if (!projectId || isCompletelyEmpty) {
-      setLoading(false);
-      setData(null);
+      if (!silent) setLoading(false);
+      if (!silent) setData(null);
       return;
     }
     
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
 
     try {
@@ -100,13 +100,21 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
     } catch (err: any) {
       setError(err.message || "Failed to fetch issues");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [projectId, searchParams, isCompletelyEmpty]);
 
   useEffect(() => {
-    fetchIssues();
-  }, [fetchIssues, refreshTrigger]);
+    fetchIssues(false);
+  }, [fetchIssues]);
+
+  const prevRefreshTrigger = useRef(refreshTrigger || 0);
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger !== prevRefreshTrigger.current) {
+      prevRefreshTrigger.current = refreshTrigger;
+      fetchIssues(true);
+    }
+  }, [refreshTrigger, fetchIssues]);
 
   const updateFilter = (key: string, value: string) => {
     const newParams = new URLSearchParams(searchParams.toString());

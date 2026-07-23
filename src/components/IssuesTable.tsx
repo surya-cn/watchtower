@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./IssuesTable.module.css";
-import SpecularButton from "./SpecularButton/SpecularButton";
+import Button from '@/components/Button/Button';
 import SimilarPostsSlideOver from "./SimilarPostsSlideOver";
 import { apiClient } from "../lib/apiClient";
 
@@ -237,20 +237,9 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
         </div>
 
         {hasActiveFilters && (
-          <SpecularButton
-            size="sm"
-            radius={8}
-            tint="#a0b4ff"
-            tintOpacity={0.08}
-            lineColor="#c0ccff"
-            baseColor="#525252"
-            intensity={0.9}
-            followMouse
-            proximity={120}
-            onClick={clearFilters}
-          >
+          <Button size="sm" onClick={clearFilters}>
             Clear filters
-          </SpecularButton>
+          </Button>
         )}
       </div>
 
@@ -354,37 +343,25 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
         <div className={styles.pagination}>
           <span>Showing {data.data.length} of {data.pagination.total_count} issues</span>
           <div className={styles.pageControls}>
-            <SpecularButton
-              disabled={data.pagination.page <= 1}
-              size="sm"
-              radius={8}
-              tint="#a0b4ff"
-              tintOpacity={0.08}
-              lineColor="#c0ccff"
-              baseColor="#525252"
-              intensity={0.9}
-              followMouse
-              proximity={100}
-              onClick={() => handlePageChange(data.pagination.page - 1)}
+            <Button disabled={data.pagination.page <= 1} size="sm" onClick={() => handlePageChange(data.pagination.page - 1)}
             >
               Previous
-            </SpecularButton>
+            </Button>
             <span>Page {data.pagination.page} of {data.pagination.total_pages}</span>
-            <SpecularButton
-              disabled={data.pagination.page >= data.pagination.total_pages}
+            <Button disabled={data.pagination.page>= data.pagination.total_pages}
               size="sm"
-              radius={8}
-              tint="#a0b4ff"
-              tintOpacity={0.08}
-              lineColor="#c0ccff"
-              baseColor="#525252"
-              intensity={0.9}
-              followMouse
-              proximity={100}
+              
+              
+              
+              
+              
+              
+              
+              
               onClick={() => handlePageChange(data.pagination.page + 1)}
             >
               Next
-            </SpecularButton>
+            </Button>
           </div>
         </div>
       )}

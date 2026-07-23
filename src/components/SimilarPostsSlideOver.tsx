@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import styles from "./IssueDetailSlideOver.module.css";
 import { apiClient } from "../lib/apiClient";
-import SpecularButton from "./SpecularButton/SpecularButton";
+import Button from '@/components/Button/Button';
 import { createPortal } from "react-dom";
 
 interface RawPost {

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ProjectConfig } from "@/lib/schemas";
 import styles from "./ConfigForm.module.css";
-import SpecularButton from "@/components/SpecularButton/SpecularButton";
+import Button from '@/components/Button/Button';
 
 type ConfigFormProps = {
   initialData?: {
@@ -325,9 +325,24 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
       });
       
       if (res.ok) {
-        // Force Next.js router cache reset so Sidebar ProjectSwitcher re-fetches
-        router.refresh(); 
-        router.push("/settings");
+        // Fetch remaining projects to determine where to redirect
+        try {
+          const projsRes = await fetch('/api/projects');
+          const projsData = await projsRes.json();
+          const remainingProjects = projsData.data || [];
+          const nextProject = remainingProjects.find((p: any) => p.id !== id);
+          
+          router.refresh(); // Force Next.js router cache reset
+          
+          if (nextProject) {
+            router.push(`/?project=${nextProject.id}`);
+          } else {
+            router.push("/settings");
+          }
+        } catch (e) {
+          router.refresh();
+          router.push("/settings");
+        }
       } else {
         const data = await res.json();
         setErrors({ root: data.error || "Failed to delete project" });
@@ -443,44 +458,22 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
                   }}
                 />
               </div>
-              <SpecularButton
-                type="button"
-                size="sm"
-                radius={8}
-                tint="#ff6b6b"
-                tintOpacity={0.08}
-                lineColor="#ff9999"
-                baseColor="#aa4444"
-                intensity={0.9}
-                followMouse
-                proximity={100}
-                onClick={() => {
+              <Button variant="danger" type="button" size="sm" onClick={() => {
                   const newSources = [...config.sources];
                   newSources.splice(index, 1);
                   updateConfig(["sources"], newSources);
                 }}
               >
                 Remove
-              </SpecularButton>
+              </Button>
             </div>
           ))}
-          <SpecularButton
-            type="button"
-            size="sm"
-            radius={8}
-            tint="#a0b4ff"
-            tintOpacity={0.08}
-            lineColor="#c0ccff"
-            baseColor="#525252"
-            intensity={0.9}
-            followMouse
-            proximity={120}
-            onClick={() => {
+          <Button type="button" size="sm" onClick={() => {
               updateConfig(["sources"], [...config.sources, { name: "", url: "" }]);
             }}
           >
             + Add Source
-          </SpecularButton>
+          </Button>
         </div>
       </section>
 
@@ -539,55 +532,20 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
 
       <div className={styles.buttonRow}>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <SpecularButton
-            type="button"
-            size="md"
-            radius={10}
-            tint="#a0b4ff"
-            tintOpacity={0.06}
-            lineColor="#c0ccff"
-            baseColor="#525252"
-            intensity={0.85}
-            followMouse
-            proximity={150}
-            onClick={() => router.back()}
+          <Button type="button" size="md" onClick={() => router.back()}
           >
             Cancel
-          </SpecularButton>
+          </Button>
           {isEditMode && (
-            <SpecularButton
-              type="button"
-              disabled={isSyncing}
-              size="md"
-              radius={10}
-              tint="#4C6FFF"
-              tintOpacity={0.1}
-              lineColor="#a0b4ff"
-              baseColor="#525252"
-              intensity={0.9}
-              followMouse
-              proximity={150}
-              onClick={() => handleSync(id)}
+            <Button type="button" disabled={isSyncing} size="md" onClick={() => handleSync(id)}
             >
               {isSyncing ? "Syncing..." : "Sync Now"}
-            </SpecularButton>
+            </Button>
           )}
         </div>
-        <SpecularButton
-          type="submit"
-          disabled={loading}
-          size="md"
-          radius={10}
-          tint="#4C6FFF"
-          tintOpacity={0.2}
-          lineColor="#a0b4ff"
-          baseColor="#3a5acc"
-          intensity={1.2}
-          followMouse
-          proximity={180}
-        >
+        <Button variant="primary" type="submit" disabled={loading} size="md">
           {loading ? "Saving & Syncing..." : "Save Configuration"}
-        </SpecularButton>
+        </Button>
       </div>
 
       {isEditMode && (
@@ -596,21 +554,10 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
           <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "1rem" }}>
             Deleting a project is irreversible. All associated issue clusters, raw posts, and history will be permanently deleted.
           </p>
-          <SpecularButton
-            type="button"
-            size="md"
-            radius={8}
-            tint="#ff6b6b"
-            tintOpacity={0.15}
-            lineColor="#ff9999"
-            baseColor="#aa4444"
-            intensity={1}
-            followMouse
-            proximity={100}
-            onClick={() => setShowDeleteModal(true)}
+          <Button variant="danger" type="button" size="md" onClick={() => setShowDeleteModal(true)}
           >
             Delete Project
-          </SpecularButton>
+          </Button>
         </section>
       )}
 
@@ -634,36 +581,16 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
               style={{ marginBottom: '1.5rem', width: '100%' }}
             />
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <SpecularButton
-                type="button"
-                size="md"
-                radius={8}
-                tint="#a0b4ff"
-                tintOpacity={0.06}
-                lineColor="#c0ccff"
-                baseColor="#525252"
-                intensity={0.85}
-                onClick={() => {
+              <Button type="button" size="md" onClick={() => {
                   setShowDeleteModal(false);
                   setDeleteConfirmText("");
                 }}
               >
                 Cancel
-              </SpecularButton>
-              <SpecularButton
-                type="button"
-                disabled={isDeleting || (deleteConfirmText !== displayName && deleteConfirmText !== id)}
-                size="md"
-                radius={8}
-                tint="#ff6b6b"
-                tintOpacity={0.2}
-                lineColor="#ff9999"
-                baseColor="#aa4444"
-                intensity={1}
-                onClick={handleDelete}
-              >
+              </Button>
+              <Button variant="danger" type="button" disabled={isDeleting || (deleteConfirmText !== displayName && deleteConfirmText !== id)} size="md" onClick={handleDelete}>
                 {isDeleting ? "Deleting..." : "Confirm Delete"}
-              </SpecularButton>
+              </Button>
             </div>
           </div>
         </div>

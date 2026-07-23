@@ -5,7 +5,7 @@ import styles from "./IssueDetailSlideOver.module.css";
 import LifecycleChart from "./LifecycleChart";
 import { apiClient } from "../lib/apiClient";
 import tableStyles from "./IssuesTable.module.css";
-import SpecularButton from "./SpecularButton/SpecularButton";
+import Button from '@/components/Button/Button';
 import { createPortal } from "react-dom";
 
 interface RawPost {
@@ -197,21 +197,9 @@ export default function IssueDetailSlideOver({ issueId, projectId, onClose, onUp
                   </div>
                   
                   <div style={{ display: "flex", gap: "var(--spacing-md)", alignItems: "center" }}>
-                  <SpecularButton
-                    type="submit"
-                    disabled={updating || newStatus === issue.status}
-                    size="sm"
-                    radius={8}
-                    tint="#4C6FFF"
-                    tintOpacity={0.15}
-                    lineColor="#a0b4ff"
-                    baseColor="#3a5acc"
-                    intensity={1.1}
-                    followMouse
-                    proximity={150}
-                  >
+                  <Button variant="primary" type="submit" disabled={updating || newStatus === issue.status} size="sm">
                     {updating ? "Updating..." : "Update Status"}
-                  </SpecularButton>
+                  </Button>
                     {updateMsg && (
                       <span className={updateMsg.type === "success" ? styles.successMsg : styles.errorMsg}>
                         {updateMsg.text}

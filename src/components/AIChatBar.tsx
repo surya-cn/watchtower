@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./AIChatBar.module.css";
-import SpecularButton from './SpecularButton/SpecularButton';
+import Button from '@/components/Button/Button';
 import { apiClient } from "../lib/apiClient";
 
 interface Message {
@@ -121,21 +121,9 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
           placeholder="Ask AI to filter, summarize, or explain issues..."
           className={styles.input}
         />
-        <SpecularButton
-          type="submit"
-          disabled={!input.trim() || loading}
-          size="sm"
-          radius={8}
-          tint="#4C6FFF"
-          tintOpacity={0.2}
-          lineColor="#a0b4ff"
-          baseColor="#3a5acc"
-          intensity={1.1}
-          followMouse
-          proximity={150}
-        >
+        <Button variant="primary" type="submit" disabled={!input.trim() || loading} size="sm">
           Send
-        </SpecularButton>
+        </Button>
       </form>
     </div>
   );

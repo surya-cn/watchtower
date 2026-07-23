@@ -4,6 +4,8 @@ import { getProjectIdOrError, notFound, serverError } from "@/lib/errors";
 
 // GET /api/metrics/summary — project-level dashboard metrics
 // TODO (Phase 7+): Add per-project permission check here using project_access table for non-admin users.
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const projectIdOrError = getProjectIdOrError(req.headers);

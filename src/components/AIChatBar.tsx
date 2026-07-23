@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import styles from "./AIChatBar.module.css";
 import Button from '@/components/Button/Button';
@@ -20,6 +20,7 @@ interface AIChatBarProps {
 export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -73,7 +74,7 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
         if (data.search) params.set("search", data.search);
         else params.delete("search");
         
-        router.push(`/?${params.toString()}`, { scroll: false });
+        router.push(`${pathname}?${params.toString()}`, { scroll: false });
       }
       
       setMessages((prev) => [...prev, { role: "assistant", content: assistantContent }]);

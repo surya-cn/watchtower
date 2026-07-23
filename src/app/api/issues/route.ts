@@ -10,6 +10,8 @@ import {
 import { ZodError } from "zod";
 import { Prisma, Severity, Status } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 function getSortOrder(
   sortBy: string
 ): Prisma.IssueClusterOrderByWithRelationInput {

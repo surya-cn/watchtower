@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import styles from "./IssuesTable.module.css";
 import Button from '@/components/Button/Button';
 import SimilarPostsSlideOver from "./SimilarPostsSlideOver";
@@ -51,6 +51,7 @@ interface Props {
 export default function IssuesTable({ projectId, availableCategories, isCompletelyEmpty, parentLoading, selectedIssueId, setSelectedIssueId, refreshTrigger }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const [data, setData] = useState<IssuesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +75,7 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
           newParams.delete("search");
         }
         newParams.set("page", "1");
-        router.push(`/?${newParams.toString()}`, { scroll: false });
+        router.push(`${pathname}?${newParams.toString()}`, { scroll: false });
       }
     }, 400);
     return () => clearTimeout(timer);
@@ -124,13 +125,13 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
       newParams.delete(key);
     }
     newParams.set("page", "1"); // reset to page 1
-    router.push(`/?${newParams.toString()}`, { scroll: false });
+    router.push(`${pathname}?${newParams.toString()}`, { scroll: false });
   };
 
   const clearFilters = () => {
     const newParams = new URLSearchParams();
     newParams.set("project", projectId);
-    router.push(`/?${newParams.toString()}`, { scroll: false });
+    router.push(`${pathname}?${newParams.toString()}`, { scroll: false });
   };
 
   const hasActiveFilters = Array.from(searchParams.keys()).some(
@@ -165,7 +166,7 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
   const handlePageChange = (newPage: number) => {
     const newParams = new URLSearchParams(searchParams.toString());
     newParams.set("page", newPage.toString());
-    router.push(`/?${newParams.toString()}`, { scroll: false });
+    router.push(`${pathname}?${newParams.toString()}`, { scroll: false });
   };
 
   if (isCompletelyEmpty) return null; // Metric cards row already handles this

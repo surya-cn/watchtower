@@ -103,6 +103,18 @@ export async function GET(req: NextRequest) {
           recurrence_ratio: true,
           first_reported_at: true,
           last_reported_at: true,
+          raw_posts: {
+            orderBy: [{ posted_at: "desc" }, { id: "desc" }],
+            take: 1,
+            select: {
+              id: true,
+              content: true,
+              url: true,
+              author: true,
+              source: true,
+              posted_at: true,
+            },
+          },
         },
         orderBy: getSortOrder(sortBy),
         skip,
@@ -112,8 +124,16 @@ export async function GET(req: NextRequest) {
 
     const totalPages = Math.ceil(totalCount / pageSize);
 
+    const mappedIssues = issues.map((issue) => {
+      const { raw_posts, ...rest } = issue;
+      return {
+        ...rest,
+        latest_post: raw_posts.length > 0 ? raw_posts[0] : null,
+      };
+    });
+
     return NextResponse.json({
-      data: issues,
+      data: mappedIssues,
       pagination: {
         page,
         page_size: pageSize,

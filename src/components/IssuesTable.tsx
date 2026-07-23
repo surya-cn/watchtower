@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./IssuesTable.module.css";
 import SpecularButton from "./SpecularButton/SpecularButton";
+import SimilarPostsSlideOver from "./SimilarPostsSlideOver";
 import { apiClient } from "../lib/apiClient";
 
 interface Issue {
@@ -16,6 +17,14 @@ interface Issue {
   last_reported_at: string;
   priority_score: number | null;
   recurrence_ratio: number | null;
+  latest_post: {
+    id: string;
+    content: string;
+    url: string;
+    author: string | null;
+    source: string;
+    posted_at: string;
+  } | null;
 }
 
 interface IssuesResponse {
@@ -45,6 +54,7 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
   const [data, setData] = useState<IssuesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [similarIssueId, setSimilarIssueId] = useState<string | null>(null);
 
   const urlSearch = searchParams.get("search") || "";
   const [searchQuery, setSearchQuery] = useState(urlSearch);
@@ -287,8 +297,14 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
                 return (
                   <tr key={issue.id}>
                     <td>{slNo}</td>
-                    <td style={{ maxWidth: "300px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={issue.title}>
-                      {issue.title}
+                    <td style={{ maxWidth: "300px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={issue.latest_post?.content || issue.title}>
+                      {issue.latest_post ? (
+                        <a href={issue.latest_post.url} target="_blank" rel="noreferrer" style={{ color: "var(--text-main)", textDecoration: "underline" }}>
+                          {issue.latest_post.content}
+                        </a>
+                      ) : (
+                        issue.title
+                      )}
                     </td>
                     <td>{issue.category}</td>
                     <td>{renderBadge(issue.severity, "severity")}</td>
@@ -308,20 +324,38 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
                       {relativeTime(issue.last_reported_at)}
                     </td>
                     <td>
-                      <SpecularButton
-                        size="sm"
-                        radius={8}
-                        tint="#4C6FFF"
-                        tintOpacity={0.12}
-                        lineColor="#a0b4ff"
-                        baseColor="#3a5acc"
-                        intensity={1.0}
-                        followMouse
-                        proximity={100}
-                        onClick={() => setSelectedIssueId(issue.id)}
-                      >
-                        View
-                      </SpecularButton>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <SpecularButton
+                          size="sm"
+                          radius={8}
+                          tint="#4C6FFF"
+                          tintOpacity={0.12}
+                          lineColor="#a0b4ff"
+                          baseColor="#3a5acc"
+                          intensity={1.0}
+                          followMouse
+                          proximity={100}
+                          onClick={() => setSelectedIssueId(issue.id)}
+                        >
+                          View
+                        </SpecularButton>
+                        {issue.post_count > 1 && (
+                          <SpecularButton
+                            size="sm"
+                            radius={8}
+                            tint="#FFB04C"
+                            tintOpacity={0.12}
+                            lineColor="#ffd5a0"
+                            baseColor="#cc833a"
+                            intensity={1.0}
+                            followMouse
+                            proximity={100}
+                            onClick={() => setSimilarIssueId(issue.id)}
+                          >
+                            Similar ({issue.post_count - 1})
+                          </SpecularButton>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -369,6 +403,14 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
             </SpecularButton>
           </div>
         </div>
+      )}
+
+      {similarIssueId && (
+        <SimilarPostsSlideOver
+          projectId={projectId}
+          issueId={similarIssueId}
+          onClose={() => setSimilarIssueId(null)}
+        />
       )}
     </div>
   );

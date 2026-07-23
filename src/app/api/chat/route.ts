@@ -169,7 +169,7 @@ Rules:
           if (fnName === "query_database") {
             const where: any = { project_id: projectId };
             if (args.status) where.status = { in: args.status.split(",") };
-            if (args.severity) where.impact_severity = { in: args.severity.split(",").map((s:string)=>s.toUpperCase()) };
+            if (args.severity) where.impact_severity = { in: args.severity.split(",").map((s:string)=>s.trim().toLowerCase()) };
             if (args.category) where.category = args.category;
             if (args.search) where.title = { contains: args.search, mode: "insensitive" };
             

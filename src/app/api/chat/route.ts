@@ -57,7 +57,7 @@ When returning tool arguments, do NOT include extra parameters like project_id o
 
     // 3. Call OpenRouter
     const msg = await client.chat.completions.create({
-      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+      model: "google/gemini-2.5-flash",
       max_tokens: 1024,
       messages,
       tools: [
@@ -257,7 +257,7 @@ When returning tool arguments, do NOT include extra parameters like project_id o
       let summaryText = "Unable to generate summary — showing raw data";
       try {
         const summaryMsg = await client.chat.completions.create({
-          model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+          model: "google/gemini-2.5-flash",
           max_tokens: 512,
           messages: [
             { role: "system", content: "You are a concise assistant. Summarize the provided issue data in 2-3 sentences. Focus on trends and key numbers." },
@@ -288,7 +288,7 @@ When returning tool arguments, do NOT include extra parameters like project_id o
       let summaryText = "Unable to generate summary — showing raw data";
       try {
         const summaryMsg = await client.chat.completions.create({
-          model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+          model: "google/gemini-2.5-flash",
           max_tokens: 512,
           messages: [
             { role: "system", content: "You are a concise assistant. Summarize the provided project metrics in 2-3 sentences. Note any significant changes or active issue counts." },

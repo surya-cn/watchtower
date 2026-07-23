@@ -44,7 +44,7 @@ ${clustersText}
 Respond ONLY using the classify_and_match tool.`;
 
   const msg = await client.chat.completions.create({
-    model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    model: "google/gemini-2.5-flash",
     max_tokens: 1024,
     messages: [
       { role: "system", content: systemPrompt },
@@ -109,7 +109,7 @@ ${postsContent.join("\n\n---\n\n")}
 Provide only the summary text without any introduction or conclusion.`;
 
   const msg = await client.chat.completions.create({
-    model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    model: "google/gemini-2.5-flash",
     max_tokens: 256,
     messages: [{ role: "user", content: userMessage }]
   });

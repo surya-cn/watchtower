@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./IssueDetailSlideOver.module.css";
 import { apiClient } from "../lib/apiClient";
 import SpecularButton from "./SpecularButton/SpecularButton";
+import { createPortal } from "react-dom";
 
 interface RawPost {
   id: string;
@@ -24,8 +25,10 @@ export default function SimilarPostsSlideOver({ projectId, issueId, onClose }: P
   const [posts, setPosts] = useState<RawPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     let isMounted = true;
     const fetchSimilarPosts = async () => {
       setLoading(true);
@@ -42,28 +45,30 @@ export default function SimilarPostsSlideOver({ projectId, issueId, onClose }: P
       }
     };
     fetchSimilarPosts();
-    return () => { isMounted = false; };
-  }, [projectId, issueId]);
 
-  return (
-    <>
-      <div className={styles.overlay} onClick={onClose} />
-      <div className={styles.slideOver}>
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+
+    return () => { 
+      isMounted = false; 
+      window.removeEventListener("keydown", handleEsc);
+    };
+  }, [projectId, issueId, onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className={styles.overlay} onClick={(e) => {
+      if (e.target === e.currentTarget) onClose();
+    }}>
+      <div className={styles.panel}>
         <div className={styles.header}>
-          <h2>Similar Posts</h2>
-          <SpecularButton
-            size="sm"
-            radius={8}
-            tint="#ffffff"
-            tintOpacity={0.1}
-            lineColor="#555"
-            baseColor="#222"
-            intensity={1}
-            followMouse
-            onClick={onClose}
-          >
-            Close
-          </SpecularButton>
+          <h2 className={styles.headerTitle}>Similar Posts</h2>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+            &times;
+          </button>
         </div>
         <div className={styles.content}>
           {loading ? (
@@ -112,6 +117,7 @@ export default function SimilarPostsSlideOver({ projectId, issueId, onClose }: P
           )}
         </div>
       </div>
-    </>
+    </div>,
+    document.body
   );
 }

@@ -325,35 +325,19 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
                     </td>
                     <td>
                       <div style={{ display: "flex", gap: "8px" }}>
-                        <SpecularButton
-                          size="sm"
-                          radius={8}
-                          tint="#4C6FFF"
-                          tintOpacity={0.12}
-                          lineColor="#a0b4ff"
-                          baseColor="#3a5acc"
-                          intensity={1.0}
-                          followMouse
-                          proximity={100}
+                        <button
+                          className={styles.actionBtn}
                           onClick={() => setSelectedIssueId(issue.id)}
                         >
                           View
-                        </SpecularButton>
+                        </button>
                         {issue.post_count > 1 && (
-                          <SpecularButton
-                            size="sm"
-                            radius={8}
-                            tint="#FFB04C"
-                            tintOpacity={0.12}
-                            lineColor="#ffd5a0"
-                            baseColor="#cc833a"
-                            intensity={1.0}
-                            followMouse
-                            proximity={100}
+                          <button
+                            className={`${styles.actionBtn} ${styles.actionBtnSimilar}`}
                             onClick={() => setSimilarIssueId(issue.id)}
                           >
                             Similar ({issue.post_count - 1})
-                          </SpecularButton>
+                          </button>
                         )}
                       </div>
                     </td>

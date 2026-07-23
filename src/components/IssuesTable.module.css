@@ -32,7 +32,39 @@
 }
 
 .table tbody tr {
-  transition: var(--transition-smooth);
+  transition: color 0.2s ease;
+}
+
+.actionBtn {
+  background: rgba(76, 111, 255, 0.12);
+  border: 1px solid rgba(160, 180, 255, 0.4);
+  color: #a0b4ff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  outline: none;
+}
+
+.actionBtn:hover {
+  background: rgba(76, 111, 255, 0.25);
+  border-color: rgba(160, 180, 255, 0.8);
+  color: #ffffff;
+}
+
+.actionBtnSimilar {
+  background: rgba(255, 176, 76, 0.12);
+  border: 1px solid rgba(255, 213, 160, 0.4);
+  color: #ffd5a0;
+}
+
+.actionBtnSimilar:hover {
+  background: rgba(255, 176, 76, 0.25);
+  border-color: rgba(255, 213, 160, 0.8);
+  color: #ffffff;
 }
 
 .table tbody tr:hover {

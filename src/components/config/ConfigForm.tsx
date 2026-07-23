@@ -325,23 +325,21 @@ export default function ConfigForm({ initialData, isEditMode }: ConfigFormProps)
       });
       
       if (res.ok) {
-        // Fetch remaining projects to determine where to redirect
+        // Fetch remaining projects to determine where to redirect.
+        // Cache-busting parameter to ensure we get the latest list
         try {
-          const projsRes = await fetch('/api/projects');
+          const projsRes = await fetch(`/api/projects?_t=${Date.now()}`);
           const projsData = await projsRes.json();
           const remainingProjects = projsData.data || [];
           const nextProject = remainingProjects.find((p: any) => p.id !== id);
           
-          router.refresh(); // Force Next.js router cache reset
-          
           if (nextProject) {
-            router.push(`/?project=${nextProject.id}`);
+            window.location.href = `/?project=${nextProject.id}`;
           } else {
-            router.push("/settings");
+            window.location.href = "/settings";
           }
         } catch (e) {
-          router.refresh();
-          router.push("/settings");
+          window.location.href = "/settings";
         }
       } else {
         const data = await res.json();

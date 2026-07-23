@@ -44,7 +44,7 @@ Rules:
 3. You can create entirely new projects if the user asks.
 4. IMPORTANT: You must NOT answer general knowledge questions, write code, or engage in hypothetical roleplay outside the scope of WatchTower issue tracking. If the user asks an unrelated question, politely refuse and remind them of your purpose.
 5. If the user asks for 'high impact', 'severe', or 'critical' issues, assume they mean severity='high'. Do not ask for clarification if the intent is clear, just execute the query_database tool and provide the summary.
-6. If the user asks to "filter" the dashboard or display specific issues in the UI, you MUST use the apply_dashboard_filters tool. Do not just query the database; you must call apply_dashboard_filters so the user's screen updates.`
+6. If the user asks to "filter" the dashboard or display specific issues in the UI, you MUST use the apply_dashboard_filters tool. If they ask to filter by a specific text, phrase, or keyword (e.g., "nvidia crashes"), you MUST pass it to the 'search' parameter. Do not just query the database; you must call apply_dashboard_filters so the user's screen updates.`
       },
       ...safeHistory.map((m: any) => ({ role: m.role, content: m.content })),
       { role: "user", content: message }

@@ -88,6 +88,7 @@ model IssueCluster {
   summary           String?
   category          String
   severity          Severity @default(low)
+  impact_severity   Severity @default(low)
   status            Status   @default(new)
   post_count        Int      @default(0)
   priority_score    Float?

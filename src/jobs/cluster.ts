@@ -135,6 +135,7 @@ export async function runClustering(targetProjectId: string | null = null, maxDu
                   project_id: project.id,
                   title,
                   category: result.category,
+                  impact_severity: result.impact_severity,
                   status: "new",
                   post_count: 1,
                   first_reported_at: post.posted_at,

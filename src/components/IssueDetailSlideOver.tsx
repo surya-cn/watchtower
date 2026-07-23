@@ -30,6 +30,7 @@ interface IssueDetail {
   summary: string;
   category: string;
   severity: string;
+  impact_severity: string;
   status: string;
   created_at: string;
   last_reported_at: string;
@@ -156,8 +157,12 @@ export default function IssueDetailSlideOver({ issueId, projectId, onClose, onUp
                     <span>{issue.category}</span>
                   </div>
                   <div className={styles.metaItem}>
-                    <span className={styles.metaLabel}>Severity</span>
+                    <span className={styles.metaLabel}>Volume Severity</span>
                     <div>{renderBadge(issue.severity, "severity")}</div>
+                  </div>
+                  <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Impact Severity</span>
+                    <div>{renderBadge(issue.impact_severity, "severity")}</div>
                   </div>
                   <div className={styles.metaItem}>
                     <span className={styles.metaLabel}>Current Status</span>

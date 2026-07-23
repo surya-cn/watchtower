@@ -12,6 +12,7 @@ interface Issue {
   title: string;
   category: string;
   severity: string;
+  impact_severity: string;
   status: string;
   post_count: number;
   last_reported_at: string;
@@ -194,11 +195,25 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
         </div>
 
         <div className={styles.filterGroup}>
-          <span className={styles.filterLabel}>Severity</span>
+          <span className={styles.filterLabel}>Volume Severity</span>
           <select 
             className={styles.filterSelect}
             value={searchParams.get("severity") || ""}
             onChange={(e) => updateFilter("severity", e.target.value)}
+          >
+            <option value="">All</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>Impact Severity</span>
+          <select 
+            className={styles.filterSelect}
+            value={searchParams.get("impact_severity") || ""}
+            onChange={(e) => updateFilter("impact_severity", e.target.value)}
           >
             <option value="">All</option>
             <option value="high">High</option>
@@ -231,7 +246,8 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
             <option value="">Default (Last Reported)</option>
             <option value="last_reported_desc">Last Reported (Newest first)</option>
             <option value="post_count_desc">Post Count (Highest first)</option>
-            <option value="severity_desc">Severity (High first)</option>
+            <option value="severity_desc">Volume Severity (High first)</option>
+            <option value="impact_severity_desc">Impact Severity (High first)</option>
             <option value="priority_score_desc">Priority (Highest first)</option>
           </select>
         </div>
@@ -269,7 +285,8 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
                 <th>Sl No</th>
                 <th>Issue Title</th>
                 <th>Category</th>
-                <th>Severity</th>
+                <th>Vol. Severity</th>
+                <th>Imp. Severity</th>
                 <th>Status</th>
                 <th>Post Count</th>
                 <th>Score</th>
@@ -297,6 +314,7 @@ export default function IssuesTable({ projectId, availableCategories, isComplete
                     </td>
                     <td>{issue.category}</td>
                     <td>{renderBadge(issue.severity, "severity")}</td>
+                    <td>{renderBadge(issue.impact_severity, "severity")}</td>
                     <td>{renderBadge(issue.status, "status")}</td>
                     <td>{issue.post_count}</td>
                     <td>

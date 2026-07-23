@@ -97,6 +97,7 @@ export async function GET(req: NextRequest) {
           summary: true,
           category: true,
           severity: true,
+          impact_severity: true,
           status: true,
           post_count: true,
           priority_score: true,

@@ -19,6 +19,7 @@ export type ClassifyAndMatchResult = {
   matched_cluster_id: string | null;
   is_new_issue: boolean;
   suggested_title: string | null;
+  impact_severity: "low" | "medium" | "high";
 };
 
 export async function classifyAndMatchPost(
@@ -30,6 +31,7 @@ export async function classifyAndMatchPost(
 You must categorize the post into exactly one of the allowed categories: [${allowedCategories.join(", ")}].
 You are provided a list of existing clusters. Determine if the post describes an issue that matches one of these existing clusters.
 If it does, return the matched_cluster_id. If it describes a distinct new issue, mark is_new_issue as true and suggest a short, descriptive title for the new cluster (3-6 words).
+You must also assess the 'impact_severity' (low, medium, or high) of the issue based on player impact and organizational revenue impact (e.g., game crashes, progression blocks, or money-related issues are 'high' severity, minor visual bugs are 'low').
 Crucial: Always prioritize assigning to an existing cluster if it matches the core issue, even if the cluster's status is 'fixed', 'resolved', or 'closed_false_positive'. This helps us track recurrences.`;
 
   let clustersText = existingClusters.length > 0 
@@ -62,9 +64,10 @@ Respond ONLY using the classify_and_match tool.`;
               category: { type: "string", description: "Must be one of the allowed categories." },
               matched_cluster_id: { type: ["string", "null"], description: "The ID of the matching cluster, or null if it's a new issue." },
               is_new_issue: { type: "boolean", description: "True if no existing cluster matches and a new one should be created." },
-              suggested_title: { type: ["string", "null"], description: "A short, descriptive title if creating a new cluster, else null." }
+              suggested_title: { type: ["string", "null"], description: "A short, descriptive title if creating a new cluster, else null." },
+              impact_severity: { type: "string", enum: ["low", "medium", "high"], description: "The assessed severity based on player impact and revenue impact." }
             },
-            required: ["category", "matched_cluster_id", "is_new_issue", "suggested_title"]
+            required: ["category", "matched_cluster_id", "is_new_issue", "suggested_title", "impact_severity"]
           }
         }
       }
@@ -97,6 +100,7 @@ Respond ONLY using the classify_and_match tool.`;
     matched_cluster_id: input.matched_cluster_id || null,
     is_new_issue: input.is_new_issue === true,
     suggested_title: input.suggested_title || null,
+    impact_severity: input.impact_severity || "low",
   };
 }
 

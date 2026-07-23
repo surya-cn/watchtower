@@ -70,6 +70,8 @@ export default function AIChatBar({ projectId, onOpenIssue }: AIChatBarProps) {
         else params.delete("severity");
         if (data.category) params.set("category", data.category);
         else params.delete("category");
+        if (data.search) params.set("search", data.search);
+        else params.delete("search");
         
         router.push(`/?${params.toString()}`, { scroll: false });
       }

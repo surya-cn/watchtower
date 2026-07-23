@@ -122,7 +122,8 @@ Rules:
             properties: {
               status: { type: "string" },
               severity: { type: "string" },
-              category: { type: "string" }
+              category: { type: "string" },
+              search: { type: "string", description: "Search query to filter the dashboard table by text" }
             }
           }
         }
